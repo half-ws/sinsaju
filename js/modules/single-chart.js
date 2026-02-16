@@ -9,8 +9,6 @@ import { CircularChart } from '../viz/circular-chart.js';
 import { WaveformChart } from '../viz/waveform-chart.js';
 import { CheonganWaveformChart } from '../viz/cheongan-waveform.js';
 import { FortuneOverlayChart } from '../viz/fortune-overlay-chart.js';
-import { HeatmapChart } from '../viz/heatmap-chart.js';
-import { SixtyGapjaChart } from '../viz/sixty-gapja-chart.js';
 import { FortuneModule } from './fortune-module.js';
 import { generateOhengWaves, generateToWave, generateCheonganWaves } from '../core/oheng-waves.js';
 import { applyLongitudeCorrection } from './longitude-correction.js';
@@ -23,8 +21,6 @@ export class SingleChart {
     this.fortuneOverlayChart = new FortuneOverlayChart('fortune-overlay-chart');
     this.cheonganWaveformChart = new CheonganWaveformChart('cheongan-waveform', { width: 900, height: 380 });
     this.waveformChart = new WaveformChart('waveform-chart', { width: 900, height: 580 });
-    this.heatmapChart = new HeatmapChart('heatmap-chart');
-    this.sixtyGapjaChart = new SixtyGapjaChart('sixty-gapja-chart', { size: 500 });
     this.fortuneModule = new FortuneModule();
 
     this._birthMoment = null;
@@ -119,16 +115,10 @@ export class SingleChart {
     const toStrengths = generateToWave(360);
     this.waveformChart.render(waveData, birthAngles, toStrengths);
 
-    // 5. Twelve-stage heatmap matrix
-    this.heatmapChart.render(chartData.matrix);
-
-    // 6. 60갑자 circular chart
-    this.sixtyGapjaChart.render(chartData);
-
-    // 7. Fortune timeline
+    // 5. Fortune timeline
     this._renderFortune(bm, chartData);
 
-    // 8. Correction info
+    // 6. Correction info
     this._showCorrectionInfo(correctionInfo);
 
     document.getElementById('results').style.display = '';

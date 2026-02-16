@@ -38,7 +38,7 @@ export class WaveformChart {
     this.container = typeof container === 'string' ? document.getElementById(container) : container;
     this.width = options.width || 900;
     this.height = options.height || 300;
-    this.padding = { top: 65, right: 36, bottom: 78, left: 85 };
+    this.padding = { top: 100, right: 36, bottom: 78, left: 85 };
     this.canvas = null;
     this.ctx = null;
     this._hoverX = null;
@@ -261,52 +261,53 @@ export class WaveformChart {
       this._drawToSubGraph(ctx, toX, toTop, toH, w, orderedIndices, angles);
     }
 
-    // ── 10. Element legend (top-left): 목↔금  화↔수  토 ──
+    // ── 10. Element legend (top-left, above graph area): 목↔금  화↔수  토 ──
+    const legendY = 20;
     ctx.textAlign = 'left';
     let legendX = left;
 
     // 목 ↔ 금
     ctx.fillStyle = OHENG_COLORS['목'].main;
-    ctx.fillRect(legendX, 7, 20, 20);
+    ctx.fillRect(legendX, legendY - 10, 20, 20);
     ctx.font = 'bold 26px "Noto Sans KR", sans-serif';
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillText('목', legendX + 24, 22);
+    ctx.fillText('목', legendX + 24, legendY + 5);
     legendX += 56;
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.font = '22px sans-serif';
-    ctx.fillText('↔', legendX, 22);
+    ctx.fillText('↔', legendX, legendY + 5);
     legendX += 30;
     ctx.fillStyle = OHENG_COLORS['금'].main;
-    ctx.fillRect(legendX, 7, 20, 20);
+    ctx.fillRect(legendX, legendY - 10, 20, 20);
     ctx.font = 'bold 26px "Noto Sans KR", sans-serif';
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillText('금', legendX + 24, 22);
+    ctx.fillText('금', legendX + 24, legendY + 5);
     legendX += 72;
 
     // 화 ↔ 수
     ctx.fillStyle = OHENG_COLORS['화'].main;
-    ctx.fillRect(legendX, 7, 20, 20);
+    ctx.fillRect(legendX, legendY - 10, 20, 20);
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillText('화', legendX + 24, 22);
+    ctx.fillText('화', legendX + 24, legendY + 5);
     legendX += 56;
     ctx.fillStyle = 'rgba(0,0,0,0.35)';
     ctx.font = '22px sans-serif';
-    ctx.fillText('↔', legendX, 22);
+    ctx.fillText('↔', legendX, legendY + 5);
     legendX += 30;
     ctx.fillStyle = OHENG_COLORS['수'].main;
-    ctx.fillRect(legendX, 7, 20, 20);
+    ctx.fillRect(legendX, legendY - 10, 20, 20);
     ctx.font = 'bold 26px "Noto Sans KR", sans-serif';
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillText('수', legendX + 24, 22);
+    ctx.fillText('수', legendX + 24, legendY + 5);
     legendX += 72;
 
     // 토
     ctx.fillStyle = OHENG_COLORS['토'].main;
-    ctx.fillRect(legendX, 7, 20, 20);
+    ctx.fillRect(legendX, legendY - 10, 20, 20);
     ctx.fillStyle = 'rgba(0,0,0,0.65)';
-    ctx.fillText('토', legendX + 24, 22);
+    ctx.fillText('토', legendX + 24, legendY + 5);
 
-    // ── 11. Pillar marker legend (top-right) ──
+    // ── 11. Pillar marker legend (top-right, above graph area) ──
     let markerLegendX = this.width - 320;
     const pillarOrder = ['년', '월', '일', '시'];
     const pillarColors = [
@@ -318,14 +319,14 @@ export class WaveformChart {
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 2]);
       ctx.beginPath();
-      ctx.moveTo(markerLegendX, 18);
-      ctx.lineTo(markerLegendX + 20, 18);
+      ctx.moveTo(markerLegendX, legendY);
+      ctx.lineTo(markerLegendX + 20, legendY);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = pillarColors[m];
       ctx.font = 'bold 24px "Noto Sans KR", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(pillarOrder[m], markerLegendX + 20, 24);
+      ctx.fillText(pillarOrder[m], markerLegendX + 20, legendY + 6);
       markerLegendX += 70;
     }
   }

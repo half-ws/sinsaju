@@ -9,6 +9,27 @@ function resolveIdx60(entry) {
   return v != null ? v : null;
 }
 
+/**
+ * Convert a 60갑자 index to a continuous angle within its branch's 30° zone.
+ * Same principle as natal pillar birth markers:
+ *   - Branch center = branchIdx * 30
+ *   - Position within branch is determined by the stem's relative position
+ *     in the 5-stem cycle that maps to this branch.
+ * idx60 % 12 gives branchIdx, idx60 % 10 gives stemIdx.
+ * The stem offset within the 30° zone: (stemIdx % 5) / 5 mapped to [-12, +12] degrees.
+ */
+function idx60ToContinuousAngle(idx60) {
+  const branchIdx = idx60 % 12;
+  const stemIdx = idx60 % 10;
+  const branchCenter = branchIdx * 30;
+  // Position the stem within the branch's territory:
+  // Each branch hosts ~5 different stems across the 60-cycle.
+  // Use the stem's offset to spread entries within the 30° zone.
+  const stemFraction = (stemIdx % 5) / 5;
+  const offset = (stemFraction - 0.5) * 24; // spread across ±12°
+  return ((branchCenter + offset) % 360 + 360) % 360;
+}
+
 export class FortuneOverlayChart extends CircularChart {
   constructor(container, options = {}) {
     super(container, options);
@@ -139,13 +160,13 @@ export class FortuneOverlayChart extends CircularChart {
       return;
     }
 
-    // Resolve fortune entries
+    // Resolve fortune entries with continuous angles (same principle as natal pillars)
     const points = [];
     for (const entry of entries) {
       const idx60 = resolveIdx60(entry);
       if (idx60 == null) continue;
       const branchIdx = idx60 % 12;
-      const angle = branchIdx * 30;
+      const angle = idx60ToContinuousAngle(idx60);
       const startAge = entry.startAge ?? entry.age ?? null;
       const year = entry.year ?? entry.calYear ?? null;
 

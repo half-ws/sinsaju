@@ -23,7 +23,7 @@ export class CheonganWaveformChart {
       : container;
     this.width = options.width || 900;
     this.height = options.height || 380;
-    this.padding = { top: 65, right: 36, bottom: 58, left: 85 };
+    this.padding = { top: 100, right: 36, bottom: 58, left: 85 };
     this.canvas = null;
     this.ctx = null;
     this._hoverX = null;
@@ -213,19 +213,20 @@ export class CheonganWaveformChart {
       ctx.fillText(v.toFixed(1), left - 6, y + 4);
     }
 
-    // ── 9. Element legend (top-left) ──
+    // ── 9. Element legend (top-left, above graph area) ──
+    const legendY = 20;
     ctx.textAlign = 'left';
     let legendX = left;
     for (const el of WAVE_ELEMENTS) {
       ctx.fillStyle = OHENG_COLORS[el].main;
-      ctx.fillRect(legendX, 7, 20, 20);
+      ctx.fillRect(legendX, legendY - 10, 20, 20);
       ctx.font = 'bold 26px "Noto Sans KR", sans-serif';
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillText(el, legendX + 24, 22);
+      ctx.fillText(el, legendX + 24, legendY + 5);
       legendX += 68;
     }
 
-    // ── 10. Pillar marker legend (top-right) ──
+    // ── 10. Pillar marker legend (top-right, above graph area) ──
     let markerLegendX = this.width - 320;
     const pillarOrder = ['년', '월', '일', '시'];
     const pillarColors = [
@@ -239,14 +240,14 @@ export class CheonganWaveformChart {
       ctx.lineWidth = 2;
       ctx.setLineDash([4, 2]);
       ctx.beginPath();
-      ctx.moveTo(markerLegendX, 18);
-      ctx.lineTo(markerLegendX + 20, 18);
+      ctx.moveTo(markerLegendX, legendY);
+      ctx.lineTo(markerLegendX + 20, legendY);
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.fillStyle = pillarColors[m];
       ctx.font = 'bold 24px "Noto Sans KR", sans-serif';
       ctx.textAlign = 'left';
-      ctx.fillText(pillarOrder[m], markerLegendX + 20, 24);
+      ctx.fillText(pillarOrder[m], markerLegendX + 20, legendY + 6);
       markerLegendX += 70;
     }
   }
