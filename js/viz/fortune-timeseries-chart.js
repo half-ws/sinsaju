@@ -86,6 +86,8 @@ export class FortuneTimeSeriesChart {
     const colors = isOheng ? OHENG_KEYS.map(k => OHENG_COLORS[k]?.main || '#888') : SIPSUNG_GROUP_KEYS.map(k => SIPSUNG_COLORS[k]);
     const maxY = isOheng ? 50 : 45;
     const currentYear = new Date().getFullYear();
+    const currentMonth = new Date().getMonth() + 1;
+    const isMonthly = !!data._isMonthly;
 
     const minYear = yearly[0].year;
     const maxYear = yearly[yearly.length - 1].year;
@@ -135,9 +137,10 @@ export class FortuneTimeSeriesChart {
       ctx.fillText(b.pillar || '', x, top + h + 38);
     }
 
-    // ── 4. 현재 연도 하이라이트 ──
-    if (currentYear >= minYear && currentYear <= maxYear) {
-      const cx = toX(currentYear);
+    // ── 4. 현재 시점 하이라이트 ──
+    const currentVal = isMonthly ? currentMonth : currentYear;
+    if (currentVal >= minYear && currentVal <= maxYear) {
+      const cx = toX(currentVal);
       ctx.fillStyle = 'rgba(255, 215, 0, 0.12)';
       ctx.fillRect(cx - 3, top, 6, h);
       drawDashedLine(ctx, cx, top, top + h, '#D4A800', [3, 2]);
@@ -212,13 +215,20 @@ export class FortuneTimeSeriesChart {
         const entry = yearly.find(d => d.year === hoverYear);
         if (entry) {
           let tooltipY = top + 6;
-          const daeunLabel = entry.daeun ? `대운:${entry.daeun.pillar}` : '';
-          const saeunLabel = `세운:${entry.saeun.pillar}`;
+          let headerText;
+          if (isMonthly) {
+            headerText = entry._monthLabel || `${hoverYear}월`;
+            if (entry.saeun?.pillar) headerText += ` ${entry.saeun.pillar}`;
+          } else {
+            const daeunLabel = entry.daeun ? `대운:${entry.daeun.pillar}` : '';
+            const saeunLabel = `세운:${entry.saeun.pillar}`;
+            headerText = `${hoverYear}년 (${entry.age}세) ${daeunLabel} ${saeunLabel}`;
+          }
 
           ctx.fillStyle = 'rgba(0,0,0,0.6)';
           ctx.font = 'bold 22px "Noto Sans KR", sans-serif';
           ctx.textAlign = 'left';
-          ctx.fillText(`${hoverYear}년 (${entry.age}세) ${daeunLabel} ${saeunLabel}`, hx + 10, tooltipY);
+          ctx.fillText(headerText, hx + 10, tooltipY);
           tooltipY += 26;
 
           for (let ki = 0; ki < keys.length; ki++) {
@@ -260,10 +270,17 @@ export class FortuneTimeSeriesChart {
     ctx.fillStyle = 'rgba(0,0,0,0.4)';
     ctx.font = '20px sans-serif';
     ctx.textAlign = 'center';
-    const labelStep = yearSpan > 60 ? 10 : (yearSpan > 30 ? 5 : 2);
-    for (let y = Math.ceil(minYear / labelStep) * labelStep; y <= maxYear; y += labelStep) {
-      const x = toX(y);
-      ctx.fillText(String(y), x, top + h + 20);
+    if (isMonthly) {
+      for (const d of yearly) {
+        const x = toX(d.year);
+        ctx.fillText(`${d.year}월`, x, top + h + 20);
+      }
+    } else {
+      const labelStep = yearSpan > 60 ? 10 : (yearSpan > 30 ? 5 : (yearSpan > 15 ? 2 : 1));
+      for (let y = Math.ceil(minYear / labelStep) * labelStep; y <= maxYear; y += labelStep) {
+        const x = toX(y);
+        ctx.fillText(String(y), x, top + h + 20);
+      }
     }
 
     // ── 10. Y축 라벨 ──

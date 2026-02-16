@@ -167,6 +167,32 @@
             <p>X축 = 연도, Y축 = 비율(%). <strong>점선</strong> = 사주원국 기준값, <strong>실선</strong> = 대운+세운 반영값. 수직 점선 = 대운 경계. 대운이 바뀔 때마다 기본 오행 구성이 변하고, 세운(매년)에 따라 미세하게 변동합니다. 합충 발생 연도에는 X축 위에 마커(녹=합, 적=충)가 표시됩니다. 마우스를 올리면 해당 연도의 상세 정보를 확인할 수 있습니다.</p>
           </div>
         </div>
+
+        <!-- 대운 10년 상세 그래프 -->
+        <div class="chart-panel waveform-panel">
+          <div class="detail-chart-header">
+            <h3 class="chart-title">대운 상세 (10년)</h3>
+            <div class="detail-nav">
+              <button class="detail-nav-btn" id="decade-prev">&#9664;</button>
+              <span class="detail-nav-label" id="decade-label">—</span>
+              <button class="detail-nav-btn" id="decade-next">&#9654;</button>
+            </div>
+          </div>
+          <div id="fortune-decade-chart" class="waveform-chart-container"></div>
+        </div>
+
+        <!-- 연간 월별 상세 그래프 -->
+        <div class="chart-panel waveform-panel">
+          <div class="detail-chart-header">
+            <h3 class="chart-title">연간 상세 (12개월)</h3>
+            <div class="detail-nav">
+              <button class="detail-nav-btn" id="year-prev">&#9664;</button>
+              <span class="detail-nav-label" id="year-label">—</span>
+              <button class="detail-nav-btn" id="year-next">&#9654;</button>
+            </div>
+          </div>
+          <div id="fortune-year-chart" class="waveform-chart-container"></div>
+        </div>
       </section>
     </section>
 

@@ -131,6 +131,10 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
   const interactions = [];
   const clashEvents = []; // 충 교란 이벤트 수집
 
+  // 이미 합(合)된 위치 추적 — 합된 간지는 운세에서 추가 합 불가
+  const combinedStems = new Set();
+  const combinedBranches = new Set();
+
   // ── Step 2: 합충 검출 ──
 
   // 2-1. 원국 내부 (인접 쌍)
@@ -151,10 +155,11 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
           sd[p1].of *= (1 - 1/3 * rf1);
           sd[p2].tr.push({ e: m[1], f: 1/3 * rf2 });
           sd[p2].of *= (1 - 1/3 * rf2);
+          combinedStems.add(p1);
+          combinedStems.add(p2);
           interactions.push({ type: '천간합', source: p1, target: p2, desc: rel.desc });
         }
       } else if (rel.type === '충') {
-        // 충: of 감소 없음, 교란 이벤트로 기록
         const elA = sd[p1].el, elB = sd[p2].el;
         clashEvents.push({ elA, elB, weight: 1.0 });
         interactions.push({ type: '천간충', source: p1, target: p2, desc: '충' });
@@ -172,10 +177,11 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
           bd[p1].of *= (1 - 2/3 * rf1);
           bd[p2].tr.push({ e: m[1], f: 2/3 * rf2 });
           bd[p2].of *= (1 - 2/3 * rf2);
+          combinedBranches.add(p1);
+          combinedBranches.add(p2);
           interactions.push({ type: '지지합', source: p1, target: p2, desc: rel.desc });
         }
       } else if (rel.type === '충') {
-        // 충: of 감소 없음, 교란 이벤트로 기록
         const elA = JIJI_OHENG[bd[p1].bi], elB = JIJI_OHENG[bd[p2].bi];
         clashEvents.push({ elA, elB, weight: 1.0 });
         interactions.push({ type: '지지충', source: p1, target: p2, desc: '충' });
@@ -186,54 +192,60 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
     _applyBanhap(bd, p1, p2, interactions);
   }
 
-  // 2-2. 운세 vs 원국
+  // 2-2. 운세 vs 원국 (이미 합된 원국 위치는 추가 합 스킵)
   for (const fp of fortunePositions) {
     for (const np of natalPositions) {
       const iw = FORTUNE_INTERACTION_W[np] || 0.5;
       const damp = FORTUNE_DAMPEN;
 
-      // 천간
-      for (const rel of OhengAnalyzer.checkStemPair(sd[fp].si, sd[np].si)) {
-        if (rel.type === '합') {
-          const m = rel.desc.match(/합\((.)\)/);
-          if (m) {
-            const fFortune = 1/3 * iw * damp;
-            const fNatal = 1/3 * iw * damp;
-            sd[fp].tr.push({ e: m[1], f: fFortune });
-            sd[fp].of *= (1 - fFortune);
-            sd[np].tr.push({ e: m[1], f: fNatal });
-            sd[np].of *= (1 - fNatal);
-            interactions.push({ type: '천간합', source: fp, target: np, desc: rel.desc });
+      // 천간 — 이미 합된 원국 천간은 스킵
+      if (!combinedStems.has(np)) {
+        for (const rel of OhengAnalyzer.checkStemPair(sd[fp].si, sd[np].si)) {
+          if (rel.type === '합') {
+            const m = rel.desc.match(/합\((.)\)/);
+            if (m) {
+              const fFortune = 1/3 * iw * damp;
+              const fNatal = 1/3 * iw * damp;
+              sd[fp].tr.push({ e: m[1], f: fFortune });
+              sd[fp].of *= (1 - fFortune);
+              sd[np].tr.push({ e: m[1], f: fNatal });
+              sd[np].of *= (1 - fNatal);
+              interactions.push({ type: '천간합', source: fp, target: np, desc: rel.desc });
+            }
+          } else if (rel.type === '충') {
+            const elA = sd[fp].el, elB = sd[np].el;
+            clashEvents.push({ elA, elB, weight: iw * FORTUNE_DAMPEN });
+            interactions.push({ type: '천간충', source: fp, target: np, desc: '충' });
           }
-        } else if (rel.type === '충') {
-          const elA = sd[fp].el, elB = sd[np].el;
-          clashEvents.push({ elA, elB, weight: iw * FORTUNE_DAMPEN });
-          interactions.push({ type: '천간충', source: fp, target: np, desc: '충' });
         }
       }
 
-      // 지지
-      for (const rel of OhengAnalyzer.checkBranchPair(bd[fp].bi, bd[np].bi)) {
-        if (rel.type === '합') {
-          const m = rel.desc.match(/합\((.)\)/);
-          if (m) {
-            const fFortune = 2/3 * iw * damp;
-            const fNatal = 2/3 * iw * damp;
-            bd[fp].tr.push({ e: m[1], f: fFortune });
-            bd[fp].of *= (1 - fFortune);
-            bd[np].tr.push({ e: m[1], f: fNatal });
-            bd[np].of *= (1 - fNatal);
-            interactions.push({ type: '지지합', source: fp, target: np, desc: rel.desc });
+      // 지지 — 이미 합된 원국 지지는 스킵
+      if (!combinedBranches.has(np)) {
+        for (const rel of OhengAnalyzer.checkBranchPair(bd[fp].bi, bd[np].bi)) {
+          if (rel.type === '합') {
+            const m = rel.desc.match(/합\((.)\)/);
+            if (m) {
+              const fFortune = 2/3 * iw * damp;
+              const fNatal = 2/3 * iw * damp;
+              bd[fp].tr.push({ e: m[1], f: fFortune });
+              bd[fp].of *= (1 - fFortune);
+              bd[np].tr.push({ e: m[1], f: fNatal });
+              bd[np].of *= (1 - fNatal);
+              interactions.push({ type: '지지합', source: fp, target: np, desc: rel.desc });
+            }
+          } else if (rel.type === '충') {
+            const elA = JIJI_OHENG[bd[fp].bi], elB = JIJI_OHENG[bd[np].bi];
+            clashEvents.push({ elA, elB, weight: iw * FORTUNE_DAMPEN });
+            interactions.push({ type: '지지충', source: fp, target: np, desc: '충' });
           }
-        } else if (rel.type === '충') {
-          const elA = JIJI_OHENG[bd[fp].bi], elB = JIJI_OHENG[bd[np].bi];
-          clashEvents.push({ elA, elB, weight: iw * FORTUNE_DAMPEN });
-          interactions.push({ type: '지지충', source: fp, target: np, desc: '충' });
         }
       }
 
-      // 반합
-      _applyBanhapWithWeight(bd, fp, np, iw, interactions);
+      // 반합 — 이미 합된 원국 지지는 스킵
+      if (!combinedBranches.has(np)) {
+        _applyBanhapWithWeight(bd, fp, np, iw, interactions);
+      }
     }
   }
 

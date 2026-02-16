@@ -14,7 +14,8 @@ import { OhengSipsungPanel } from '../viz/oheng-sipsung-panel.js';
 import { FortuneTimeSeriesChart } from '../viz/fortune-timeseries-chart.js';
 import { generateOhengWaves, generateToWave, generateCheonganWaves } from '../core/oheng-waves.js';
 import { computeProfile } from '../core/fortune-scorer.js';
-import { generateFortuneTimeSeries } from '../core/fortune-timeseries.js';
+import { generateFortuneTimeSeries, generateMonthlyDetail, monthlyToChartData } from '../core/fortune-timeseries.js';
+import { REF_YEAR, REF_YEAR_IDX, YUKSHIP_GAPJA } from '../lib/sajuwiki/constants.js';
 import { applyLongitudeCorrection } from './longitude-correction.js';
 import { appState } from '../core/state.js';
 
@@ -28,12 +29,20 @@ export class SingleChart {
     this.fortuneModule = new FortuneModule();
     this.ohengSipsungPanel = new OhengSipsungPanel('oheng-sipsung-panel');
     this.fortuneTimeSeriesChart = new FortuneTimeSeriesChart('fortune-timeseries-chart', { width: 900, height: 400 });
+    this.decadeChart = new FortuneTimeSeriesChart('fortune-decade-chart', { width: 900, height: 380 });
+    this.yearChart = new FortuneTimeSeriesChart('fortune-year-chart', { width: 900, height: 380 });
 
     this._birthMoment = null;
     this._chartData = null;
+    this._fortuneTimeSeriesData = null;
+    this._tsMode = 'oheng';
 
-    // Wire up mode toggle buttons for fortune timeseries chart
+    // 대운/연간 네비게이션 상태
+    this._currentDecadeIdx = 0;
+    this._currentYear = new Date().getFullYear();
+
     this._setupTimeSeriesToggle();
+    this._setupDetailNav();
   }
 
   _setupTimeSeriesToggle() {
@@ -42,10 +51,37 @@ export class SingleChart {
       btn.addEventListener('click', () => {
         buttons.forEach(b => b.classList.remove('active'));
         btn.classList.add('active');
-        const mode = btn.dataset.mode;
-        this.fortuneTimeSeriesChart.setMode(mode);
+        this._tsMode = btn.dataset.mode;
+        this.fortuneTimeSeriesChart.setMode(this._tsMode);
+        this.decadeChart.setMode(this._tsMode);
+        this.yearChart.setMode(this._tsMode);
       });
     });
+  }
+
+  _setupDetailNav() {
+    document.getElementById('decade-prev')?.addEventListener('click', () => {
+      this._currentDecadeIdx = Math.max(0, this._currentDecadeIdx - 1);
+      this._renderDecadeChart();
+    });
+    document.getElementById('decade-next')?.addEventListener('click', () => {
+      const daeunList = this._getDaeunList();
+      this._currentDecadeIdx = Math.min(daeunList.length - 1, this._currentDecadeIdx + 1);
+      this._renderDecadeChart();
+    });
+    document.getElementById('year-prev')?.addEventListener('click', () => {
+      this._currentYear--;
+      this._renderYearChart();
+    });
+    document.getElementById('year-next')?.addEventListener('click', () => {
+      this._currentYear++;
+      this._renderYearChart();
+    });
+  }
+
+  _getDaeunList() {
+    const daeun = this._chartData?.daeun;
+    return Array.isArray(daeun) ? daeun : (daeun?.list || []);
   }
 
   analyze(data) {
@@ -155,6 +191,23 @@ export class SingleChart {
       );
       this.fortuneTimeSeriesChart.render(tsData, 'oheng');
       this._fortuneTimeSeriesData = tsData;
+
+      // 현재 대운 인덱스 찾기
+      const daeunList = this._getDaeunList();
+      const currentAge = new Date().getFullYear() - bm.year + 1;
+      this._currentDecadeIdx = 0;
+      for (let i = daeunList.length - 1; i >= 0; i--) {
+        const dAge = daeunList[i].age ?? daeunList[i].startAge;
+        if (dAge != null && currentAge >= dAge) {
+          this._currentDecadeIdx = i;
+          break;
+        }
+      }
+      this._currentYear = new Date().getFullYear();
+
+      // 대운 10년 + 연간 12개월 차트
+      this._renderDecadeChart();
+      this._renderYearChart();
     } catch (e) {
       console.warn('Fortune timeseries rendering failed:', e);
     }
@@ -164,6 +217,76 @@ export class SingleChart {
 
     document.getElementById('results').style.display = '';
     return chartData;
+  }
+
+  _renderDecadeChart() {
+    if (!this._fortuneTimeSeriesData || !this._birthMoment) return;
+    const bm = this._birthMoment;
+    const chartData = this._chartData;
+    const hasTime = bm.hasTime;
+    const daeunList = this._getDaeunList();
+    const idx = this._currentDecadeIdx;
+    if (idx < 0 || idx >= daeunList.length) return;
+
+    const d = daeunList[idx];
+    const dAge = d.age ?? d.startAge ?? 1;
+    const startYear = bm.year + dAge - 1;
+    const endYear = startYear + 9;
+    const pillar = d.pillar || '';
+
+    // 라벨 업데이트
+    const label = document.getElementById('decade-label');
+    if (label) label.textContent = `${pillar} 대운 (${dAge}~${dAge + 9}세, ${startYear}~${endYear})`;
+
+    try {
+      const decadeData = generateFortuneTimeSeries(
+        chartData.discrete, hasTime, chartData.daeun,
+        bm.year, startYear, endYear
+      );
+      this.decadeChart.render(decadeData, this._tsMode);
+    } catch (e) {
+      console.warn('Decade chart rendering failed:', e);
+    }
+  }
+
+  _renderYearChart() {
+    if (!this._birthMoment || !this._chartData) return;
+    const bm = this._birthMoment;
+    const chartData = this._chartData;
+    const hasTime = bm.hasTime;
+    const year = this._currentYear;
+
+    // 해당 연도의 활성 대운 찾기
+    const daeunList = this._getDaeunList();
+    const koreanAge = year - bm.year + 1;
+    let activeDaeun = null;
+    for (let i = daeunList.length - 1; i >= 0; i--) {
+      const dAge = daeunList[i].age ?? daeunList[i].startAge;
+      if (dAge != null && koreanAge >= dAge) {
+        activeDaeun = daeunList[i];
+        break;
+      }
+    }
+
+    // 세운 idx60
+    const saeunIdx = ((REF_YEAR_IDX + (year - REF_YEAR)) % 60 + 60) % 60;
+    const saeunPillar = YUKSHIP_GAPJA[saeunIdx];
+
+    // 라벨 업데이트
+    const label = document.getElementById('year-label');
+    if (label) label.textContent = `${year}년 ${saeunPillar} (${koreanAge}세)`;
+
+    try {
+      const natal = this._fortuneTimeSeriesData?.natal;
+      const monthlyData = generateMonthlyDetail(
+        chartData.discrete, hasTime,
+        activeDaeun?.idx ?? null, saeunIdx, year
+      );
+      const monthlyChartData = monthlyToChartData(monthlyData, natal || { oheng: { percent: {} }, sipsung: { grouped: {} } });
+      this.yearChart.render(monthlyChartData, this._tsMode);
+    } catch (e) {
+      console.warn('Year chart rendering failed:', e);
+    }
   }
 
   _renderFortune(bm, chartData) {

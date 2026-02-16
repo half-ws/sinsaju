@@ -122,9 +122,12 @@ export function generateMonthlyDetail(
 
     const profile = computeProfile(natalDiscrete, hasTime, fortunePillars);
 
-    const delta = { oheng: {} };
+    const delta = { oheng: {}, sipsung: {} };
     for (const e of OHENG) {
       delta.oheng[e] = Math.round((profile.oheng.percent[e] - natal.oheng.percent[e]) * 10) / 10;
+    }
+    for (const g of Object.keys(natal.sipsung.grouped)) {
+      delta.sipsung[g] = Math.round(((profile.sipsung.grouped[g] || 0) - (natal.sipsung.grouped[g] || 0)) * 10) / 10;
     }
 
     monthly.push({
@@ -139,4 +142,27 @@ export function generateMonthlyDetail(
   }
 
   return monthly;
+}
+
+/**
+ * 월별 데이터를 시계열 차트 공통 포맷으로 변환.
+ * FortuneTimeSeriesChart.render()에 그대로 전달 가능.
+ */
+export function monthlyToChartData(monthlyData, natal) {
+  return {
+    natal: { oheng: natal.oheng, sipsung: natal.sipsung },
+    yearly: monthlyData.map(m => ({
+      year: m.monthNum,
+      age: m.monthNum,
+      daeun: null,
+      saeun: { pillar: m.pillar },
+      oheng: m.oheng,
+      sipsung: m.sipsung,
+      interactions: m.interactions,
+      delta: m.delta,
+      _monthLabel: `${m.monthNum}월 (${m.termName})`,
+    })),
+    daeunBoundaries: [],
+    _isMonthly: true,
+  };
 }
