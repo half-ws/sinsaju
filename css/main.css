@@ -1182,3 +1182,167 @@ body {
   border-radius: 4px;
   font-size: 0.7rem;
 }
+
+/* ----- Oheng / Sipsung Panel ----- */
+.oheng-sipsung-container {
+  padding: 8px 0;
+}
+
+.osp-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 28px;
+}
+
+@media (max-width: 768px) {
+  .osp-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+}
+
+.osp-section-title {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-bottom: 10px;
+  letter-spacing: 0.04em;
+}
+
+.osp-bar-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.osp-bar-label {
+  width: 28px;
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  font-weight: 700;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.osp-sip-label {
+  width: 36px;
+  font-family: var(--font-serif);
+  font-size: 0.85rem;
+  color: var(--text);
+}
+
+.osp-bar-track {
+  flex: 1;
+  height: 14px;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 7px;
+  overflow: hidden;
+}
+
+.osp-bar-fill {
+  height: 100%;
+  border-radius: 7px;
+  transition: width 0.5s ease;
+  opacity: 0.8;
+}
+
+.osp-sip-fill {
+  background: linear-gradient(90deg, rgba(99, 102, 241, 0.7), rgba(99, 102, 241, 0.4));
+}
+
+.osp-bar-value {
+  width: 48px;
+  text-align: right;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--text);
+  flex-shrink: 0;
+}
+
+.osp-bar-detail {
+  font-size: 0.7rem;
+  color: var(--text-dim);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.osp-yongsin {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.02);
+  border-radius: 10px;
+  border: 1px solid var(--card-border);
+}
+
+.osp-yongsin-badge {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+.osp-yongsin-badge.strong {
+  background: rgba(255, 59, 48, 0.1);
+  color: #D32F2F;
+  border: 1px solid rgba(255, 59, 48, 0.2);
+}
+
+.osp-yongsin-badge.weak {
+  background: rgba(0, 113, 227, 0.1);
+  color: #0071E3;
+  border: 1px solid rgba(0, 113, 227, 0.2);
+}
+
+.osp-yongsin-text {
+  font-size: 0.9rem;
+  color: var(--text);
+}
+
+.osp-yongsin-text strong {
+  font-family: var(--font-serif);
+  font-size: 1.1rem;
+  color: var(--accent);
+}
+
+.osp-yongsin-reason {
+  font-size: 0.78rem;
+  color: var(--text-dim);
+  line-height: 1.4;
+}
+
+/* ----- Fortune Timeseries Controls ----- */
+.fortune-ts-controls {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+
+.ts-mode-btn {
+  padding: 6px 18px;
+  border: 1px solid var(--card-border);
+  border-radius: 8px;
+  background: transparent;
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  cursor: pointer;
+  transition: all var(--transition);
+  font-family: "Noto Sans KR", sans-serif;
+}
+
+.ts-mode-btn:hover {
+  background: rgba(0, 0, 0, 0.03);
+  color: var(--text);
+}
+
+.ts-mode-btn.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}

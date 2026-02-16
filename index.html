@@ -101,6 +101,15 @@
           <p>오른쪽부터 년주 / 월주 / 일주 / 시주. 각 기둥의 위(천간)와 아래(지지)가 한 쌍이며, 일간(일주의 천간, 금색 테두리)이 "나 자신"을 대표합니다. 천간 위에 표시된 것은 일간 기준 십성(비견/겁재/식신 등), 지지 아래는 십이운성(장생/건록/제왕 등)입니다.</p>
         </div>
 
+        <!-- 오행/십성 프로필 -->
+        <div class="chart-panel">
+          <h3 class="chart-title">오행 / 십성 분석</h3>
+          <div id="oheng-sipsung-panel" class="oheng-sipsung-container"></div>
+          <div class="chart-desc chart-desc-inner">
+            <p>천간(위치 가중치: 월20, 일15, 년10, 시8)과 지지(월30, 일20, 년15, 시15)의 오행을 합산하여 정확한 비율을 도출합니다. 합충(천간합/지지합/충/반합)에 의한 오행 변환도 반영됩니다. 십성은 일간 기준으로 모든 위치의 관계를 가중 합산한 분포입니다.</p>
+          </div>
+        </div>
+
         <!-- 원형 차트 2종 (연속 + 대운/세운 오버레이) -->
         <div class="charts-row">
           <div class="chart-panel chart-half">
@@ -143,6 +152,19 @@
           <div id="fortune-timeline" class="fortune-container"></div>
           <div class="chart-desc chart-desc-inner">
             <p><strong>대운</strong> = 10년 단위 큰 흐름. 성별과 월주의 음양에 따라 순행/역행이 결정됩니다. 카드 위 색상 = 해당 대운 기간의 지배적 오행. 원형차트에서 점들은 각 대운의 12지지 위치를 보여주고, 점선은 대운의 흐름 방향입니다. 파형에서는 현재 대운이 오행 스펙트럼의 어디에 위치하는지 확인할 수 있습니다. <strong>세운</strong> = 매년 바뀌는 연운. 금색 테두리 = 올해.</p>
+          </div>
+        </div>
+
+        <!-- 운세 시계열 그래프 -->
+        <div class="chart-panel waveform-panel">
+          <h3 class="chart-title">운세에 따른 오행/십성 변화</h3>
+          <div class="fortune-ts-controls">
+            <button class="ts-mode-btn active" data-mode="oheng">오행</button>
+            <button class="ts-mode-btn" data-mode="sipsung">십성</button>
+          </div>
+          <div id="fortune-timeseries-chart" class="waveform-chart-container"></div>
+          <div class="chart-desc chart-desc-inner">
+            <p>X축 = 연도, Y축 = 비율(%). <strong>점선</strong> = 사주원국 기준값, <strong>실선</strong> = 대운+세운 반영값. 수직 점선 = 대운 경계. 대운이 바뀔 때마다 기본 오행 구성이 변하고, 세운(매년)에 따라 미세하게 변동합니다. 합충 발생 연도에는 X축 위에 마커(녹=합, 적=충)가 표시됩니다. 마우스를 올리면 해당 연도의 상세 정보를 확인할 수 있습니다.</p>
           </div>
         </div>
       </section>

@@ -23,7 +23,8 @@ import {
   OhengAnalyzer,
   YongsinAnalyzer,
   DaeunCalculator,
-  SaeunCalculator
+  SaeunCalculator,
+  WolunCalculator
 } from '../lib/sajuwiki/calculator.js';
 
 import { computeContinuousSnapshot } from '../core/trig-engine.js';
@@ -245,6 +246,21 @@ export class BirthMoment {
     this._saeunRange = [startYear, endYear];
 
     return this._saeun;
+  }
+
+  // =================================================================
+  // Wolun (월운 - Monthly Fortune)
+  // =================================================================
+
+  /**
+   * Compute monthly fortune pillars (월운) for a given year.
+   *
+   * @param {number} year - target year
+   * @returns {Object[]} array of monthly fortune entries from WolunCalculator
+   */
+  computeWolun(year) {
+    const discrete = this.computeDiscrete();
+    return WolunCalculator.calculate(discrete, year);
   }
 
   // =================================================================

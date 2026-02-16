@@ -10,7 +10,11 @@ import { WaveformChart } from '../viz/waveform-chart.js';
 import { CheonganWaveformChart } from '../viz/cheongan-waveform.js';
 import { FortuneOverlayChart } from '../viz/fortune-overlay-chart.js';
 import { FortuneModule } from './fortune-module.js';
+import { OhengSipsungPanel } from '../viz/oheng-sipsung-panel.js';
+import { FortuneTimeSeriesChart } from '../viz/fortune-timeseries-chart.js';
 import { generateOhengWaves, generateToWave, generateCheonganWaves } from '../core/oheng-waves.js';
+import { computeProfile } from '../core/fortune-scorer.js';
+import { generateFortuneTimeSeries } from '../core/fortune-timeseries.js';
 import { applyLongitudeCorrection } from './longitude-correction.js';
 import { appState } from '../core/state.js';
 
@@ -22,9 +26,26 @@ export class SingleChart {
     this.cheonganWaveformChart = new CheonganWaveformChart('cheongan-waveform', { width: 900, height: 380 });
     this.waveformChart = new WaveformChart('waveform-chart', { width: 900, height: 580 });
     this.fortuneModule = new FortuneModule();
+    this.ohengSipsungPanel = new OhengSipsungPanel('oheng-sipsung-panel');
+    this.fortuneTimeSeriesChart = new FortuneTimeSeriesChart('fortune-timeseries-chart', { width: 900, height: 400 });
 
     this._birthMoment = null;
     this._chartData = null;
+
+    // Wire up mode toggle buttons for fortune timeseries chart
+    this._setupTimeSeriesToggle();
+  }
+
+  _setupTimeSeriesToggle() {
+    const buttons = document.querySelectorAll('.ts-mode-btn');
+    buttons.forEach(btn => {
+      btn.addEventListener('click', () => {
+        buttons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        const mode = btn.dataset.mode;
+        this.fortuneTimeSeriesChart.setMode(mode);
+      });
+    });
   }
 
   analyze(data) {
@@ -118,7 +139,27 @@ export class SingleChart {
     // 5. Fortune timeline
     this._renderFortune(bm, chartData);
 
-    // 6. Correction info
+    // 6. 오행/십성 프로필
+    try {
+      const natalProfile = computeProfile(chartData.discrete, hasTime, {});
+      this.ohengSipsungPanel.render(natalProfile, chartData.yongsin);
+    } catch (e) {
+      console.warn('Oheng/Sipsung panel rendering failed:', e);
+    }
+
+    // 7. 운세 시계열 그래프
+    try {
+      const tsData = generateFortuneTimeSeries(
+        chartData.discrete, hasTime, chartData.daeun,
+        bm.year, bm.year, bm.year + 80
+      );
+      this.fortuneTimeSeriesChart.render(tsData, 'oheng');
+      this._fortuneTimeSeriesData = tsData;
+    } catch (e) {
+      console.warn('Fortune timeseries rendering failed:', e);
+    }
+
+    // 8. Correction info
     this._showCorrectionInfo(correctionInfo);
 
     document.getElementById('results').style.display = '';
