@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>신(新) 만세력 — sinsaju calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+  <div class="app">
+    <header class="app-header">
+      <h1>신<span class="accent">新</span> 만세력</h1>
+      <p class="subtitle">연속 함수 기반 사주 분석기</p>
+    </header>
+
+    <!-- Tab Navigation -->
+    <nav class="tab-nav">
+      <button class="tab-btn active" data-tab="single">개인 분석</button>
+      <button class="tab-btn" data-tab="gunghap">궁합</button>
+    </nav>
+
+    <!-- ============ Single Person Tab ============ -->
+    <section id="tab-single" class="tab-content active">
+      <div class="input-section">
+        <form id="saju-form" class="saju-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label>년</label>
+              <input type="number" id="in-year" min="1900" max="2100" placeholder="1990">
+            </div>
+            <div class="form-group">
+              <label>월</label>
+              <input type="number" id="in-month" min="1" max="12" placeholder="1">
+            </div>
+            <div class="form-group">
+              <label>일</label>
+              <input type="number" id="in-day" min="1" max="31" placeholder="15">
+            </div>
+            <div class="form-group">
+              <label>시</label>
+              <input type="number" id="in-hour" min="0" max="23" placeholder="14">
+            </div>
+            <div class="form-group">
+              <label>분</label>
+              <input type="number" id="in-min" min="0" max="59" placeholder="30">
+            </div>
+          </div>
+          <div class="form-row form-row-options">
+            <div class="form-group gender-group">
+              <label>성별</label>
+              <div class="radio-group">
+                <label class="radio-label"><input type="radio" name="gender" value="m" checked> 남</label>
+                <label class="radio-label"><input type="radio" name="gender" value="f"> 여</label>
+              </div>
+            </div>
+            <div class="form-group calendar-group">
+              <label>달력</label>
+              <div class="radio-group">
+                <label class="radio-label"><input type="radio" name="calendar" value="solar" checked> 양력</label>
+                <label class="radio-label"><input type="radio" name="calendar" value="lunar"> 음력</label>
+              </div>
+            </div>
+            <div class="form-group city-group">
+              <label>출생지</label>
+              <select id="in-city" class="city-select">
+                <option value="">직접 입력</option>
+                <option value="126.98" selected>서울</option>
+                <option value="129.08">부산</option>
+                <option value="128.60">대구</option>
+                <option value="126.71">인천</option>
+                <option value="126.85">광주</option>
+                <option value="127.38">대전</option>
+                <option value="129.31">울산</option>
+                <option value="127.01">세종</option>
+                <option value="126.53">제주</option>
+                <option value="127.01">수원</option>
+                <option value="128.68">창원</option>
+                <option value="127.15">전주</option>
+                <option value="127.49">청주</option>
+                <option value="127.73">춘천</option>
+                <option value="129.37">포항</option>
+              </select>
+            </div>
+            <div class="form-group longitude-group">
+              <label>경도</label>
+              <input type="number" id="in-longitude" step="0.01" value="126.98" min="0" max="180">
+            </div>
+          </div>
+          <button type="submit" class="btn-calculate">분석하기</button>
+        </form>
+      </div>
+
+      <section id="results" class="results-section" style="display:none;">
+        <div id="correction-info" class="correction-info" style="display:none;"></div>
+
+        <!-- 사주 4기둥 -->
+        <div id="pillar-display" class="chart-container pillar-container"></div>
+        <div class="chart-desc">
+          <p class="chart-desc-title">사주 4기둥 (Four Pillars)</p>
+          <p>오른쪽부터 년주 / 월주 / 일주 / 시주. 각 기둥의 위(천간)와 아래(지지)가 한 쌍이며, 일간(일주의 천간, 금색 테두리)이 "나 자신"을 대표합니다. 천간 위에 표시된 것은 일간 기준 십성(비견/겁재/식신 등), 지지 아래는 십이운성(장생/건록/제왕 등)입니다.</p>
+        </div>
+
+        <!-- 원형 차트 2종 (연속 + 대운/세운 오버레이) -->
+        <div class="charts-row">
+          <div class="chart-panel chart-half">
+            <h3 class="chart-title">연속 원형 차트</h3>
+            <div id="circular-chart" class="circular-chart-container"></div>
+          </div>
+          <div class="chart-panel chart-half">
+            <h3 class="chart-title">원형 차트 (대운/세운)</h3>
+            <div id="fortune-overlay-chart" class="circular-chart-container"></div>
+          </div>
+        </div>
+        <div class="chart-desc">
+          <p class="chart-desc-title">원형 차트 해석</p>
+          <p><strong>연속 원형 차트</strong>(좌): 4개 동심원 = 바깥부터 년주 / 월주 / 일주 / 시주. 각 고리의 12칸은 12지지(子~亥)이며, 오행 색상(녹=목, 적=화, 황=토, 회=금, 청=수)으로 칠해집니다. <strong>금색 선</strong> = 출생 시점의 정확한 각도 위치. 최내곽 고리는 각 지지의 지장간(숨은 천간) 구성을 비율별 색상으로 표현합니다. 고리 사이 연결선: 초록=합, 빨강=충.</p>
+          <p style="margin-top:6px"><strong>대운/세운 원형 차트</strong>(우): 원반 차트 위에 대운과 세운이 겹쳐져 표시됩니다. <strong>원형 점</strong>들은 각 대운의 12지지 위치이며, 점선으로 연결되어 대운의 흐름 방향을 보여줍니다. 금색 테두리 = 현재 대운. <strong>다이아몬드</strong> 마커 = 올해 세운의 지지 위치.</p>
+        </div>
+
+        <!-- 천간 오행 파형 -->
+        <div class="chart-panel waveform-panel">
+          <h3 class="chart-title">천간 오행 파형</h3>
+          <div id="cheongan-waveform" class="waveform-chart-container"></div>
+          <div class="chart-desc chart-desc-inner">
+            <p>X축 = 10천간(甲~癸), Y축 = 오행 에너지(0~1.0). 갑을 = 목, 병정 = 화, 무기 = 토, 경신 = 금, 임계 = 수. 5개 곡선은 각 천간 쌍의 중심에서 cos² 피크를 이루며, 지지와 달리 <strong>대립 관계가 아닌 순환적 배치</strong>입니다. <strong>4개 수직 점선</strong>이 각각 년주(<span style="color:#E88AED">분홍</span>) / 월주(<span style="color:#34C759">녹</span>) / 일주(<span style="color:#FFD700">금</span>) / 시주(<span style="color:#0071E3">청</span>)의 천간 위치입니다.</p>
+            <p style="margin-top:8px; padding:8px 12px; background:#f5f0e0; border-radius:6px; font-size:0.92em; color:#665500;"><strong>주의:</strong> 천간의 토(戊己)와 지지의 토(丑辰未戌)는 보이는 성질이 비슷할 수 있지만, 아예 다른 곳에서 나온 성질이므로 같은 개념으로 봐서는 안 됩니다.</p>
+          </div>
+        </div>
+
+        <!-- 지지 오행 파형 차트 (전체 폭, 년월일시 동시 표시) -->
+        <div class="chart-panel waveform-panel">
+          <h3 class="chart-title">지지 오행 파형</h3>
+          <div id="waveform-chart" class="waveform-chart-container"></div>
+          <div class="chart-desc chart-desc-inner">
+            <p>X축 = 각도(寅~丑, 12지지 영역), Y축 = 오행 에너지(0~1.0). 4개 곡선이 <strong>목(卯)↔금(酉), 화(午)↔수(子)</strong> 상극 관계를 cos² 삼각함수로 보여줍니다. <strong>세로 경계선</strong>이 12지지 각 영역을 구분합니다. 아래 <strong>토 그래프</strong>는 왕지(자묘오유) 75% 지점부터 역마(인사신해) 중심까지의 전환 구간에서 토의 강도(최대 0.7)를 표시합니다. 토는 독립 원소가 아닌 오행 전환(화개) 구간의 성질입니다. <strong>지장간 비율표</strong>가 12지지별 숨은 천간의 구성 비율을 보여줍니다. <strong>4개 수직 점선</strong>이 각각 년주(<span style="color:#E88AED">분홍</span>) / 월주(<span style="color:#34C759">녹</span>) / 일주(<span style="color:#FFD700">금</span>) / 시주(<span style="color:#0071E3">청</span>)의 출생 각도입니다.</p>
+          </div>
+        </div>
+
+        <!-- 십이운성 매트릭스 (히트맵) -->
+        <div class="chart-panel heatmap-panel">
+          <h3 class="chart-title">십이운성 매트릭스</h3>
+          <div id="heatmap-chart" class="heatmap-chart-container"></div>
+          <div class="chart-desc chart-desc-inner">
+            <p>4×4 행렬: <strong>행</strong> = 각 기둥의 천간(년간/월간/일간/시간), <strong>열</strong> = 각 기둥의 지지(년지/월지/일지/시지). 각 셀은 "행의 천간이 열의 지지에서 어떤 운성을 갖는가"를 보여줍니다. <strong>대각선</strong>(행=열)이 각 기둥의 자기 십이운성이며, 일간 행(금색 테두리)이 가장 중요합니다. 색상은 에너지 수준을 나타냅니다: 제왕(최고, 붉은 계열) → 묘(최저, 푸른 계열).</p>
+          </div>
+        </div>
+
+        <!-- 60갑자 원형 차트 -->
+        <div class="chart-panel">
+          <h3 class="chart-title">60갑자 원형 차트</h3>
+          <div id="sixty-gapja-chart" class="circular-chart-container"></div>
+          <div class="chart-desc chart-desc-inner">
+            <p>60갑자(甲子~癸亥)를 원형으로 배치한 차트입니다. 4개 동심원 = 바깥부터 년주 / 월주 / 일주 / 시주. 각 고리의 60칸이 60갑자 하나씩이며, 오행 색상으로 구분됩니다. <strong>금색 마커</strong>가 해당 기둥의 갑자 위치를 표시합니다. 12지지 차트와 달리 천간까지 반영하여 더 세밀한 위치를 보여줍니다.</p>
+          </div>
+        </div>
+
+        <!-- 대운/세운 타임라인 -->
+        <div class="chart-panel fortune-panel">
+          <h3 class="chart-title">대운 / 세운</h3>
+          <div id="fortune-timeline" class="fortune-container"></div>
+          <div class="chart-desc chart-desc-inner">
+            <p><strong>대운</strong> = 10년 단위 큰 흐름. 성별과 월주의 음양에 따라 순행/역행이 결정됩니다. 카드 위 색상 = 해당 대운 기간의 지배적 오행. 원형차트에서 점들은 각 대운의 12지지 위치를 보여주고, 점선은 대운의 흐름 방향입니다. 파형에서는 현재 대운이 오행 스펙트럼의 어디에 위치하는지 확인할 수 있습니다. <strong>세운</strong> = 매년 바뀌는 연운. 금색 테두리 = 올해.</p>
+          </div>
+        </div>
+      </section>
+    </section>
+
+    <!-- ============ Gunghap Tab ============ -->
+    <section id="tab-gunghap" class="tab-content" style="display:none;">
+      <div class="input-section gunghap-input-section">
+        <div class="gunghap-forms">
+          <div class="gunghap-person">
+            <h4 class="gunghap-person-label">A</h4>
+            <div class="form-row">
+              <div class="form-group"><label>년</label><input type="number" id="gA-year" min="1900" max="2100" placeholder="1990"></div>
+              <div class="form-group"><label>월</label><input type="number" id="gA-month" min="1" max="12" placeholder="1"></div>
+              <div class="form-group"><label>일</label><input type="number" id="gA-day" min="1" max="31" placeholder="15"></div>
+              <div class="form-group"><label>시</label><input type="number" id="gA-hour" min="0" max="23" placeholder="14"></div>
+              <div class="form-group"><label>분</label><input type="number" id="gA-min" min="0" max="59" placeholder="30"></div>
+            </div>
+            <div class="form-row form-row-options">
+              <div class="form-group gender-group">
+                <label>성별</label>
+                <div class="radio-group">
+                  <label class="radio-label"><input type="radio" name="gA-gender" value="m" checked> 남</label>
+                  <label class="radio-label"><input type="radio" name="gA-gender" value="f"> 여</label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="gunghap-person">
+            <h4 class="gunghap-person-label">B</h4>
+            <div class="form-row">
+              <div class="form-group"><label>년</label><input type="number" id="gB-year" min="1900" max="2100" placeholder="1992"></div>
+              <div class="form-group"><label>월</label><input type="number" id="gB-month" min="1" max="12" placeholder="3"></div>
+              <div class="form-group"><label>일</label><input type="number" id="gB-day" min="1" max="31" placeholder="20"></div>
+              <div class="form-group"><label>시</label><input type="number" id="gB-hour" min="0" max="23" placeholder="8"></div>
+              <div class="form-group"><label>분</label><input type="number" id="gB-min" min="0" max="59" placeholder="0"></div>
+            </div>
+            <div class="form-row form-row-options">
+              <div class="form-group gender-group">
+                <label>성별</label>
+                <div class="radio-group">
+                  <label class="radio-label"><input type="radio" name="gB-gender" value="m"> 남</label>
+                  <label class="radio-label"><input type="radio" name="gB-gender" value="f" checked> 여</label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <button type="button" id="gunghap-btn" class="btn-calculate">궁합 분석</button>
+      </div>
+
+      <section id="gunghap-results" class="results-section" style="display:none;">
+        <div id="gunghap-display" class="gunghap-display"></div>
+        <div class="chart-desc">
+          <p class="chart-desc-title">궁합 분석 해석 방법</p>
+          <p><strong>기둥별 각도 호환성:</strong> 두 사람의 시주/월주/년주 각도 차이를 측정합니다. 각도가 가까울수록(0~15도) 같은 기운을 공유하는 "합"이고, 180도에 가까울수록 정반대 기운인 "충"입니다. 기존 만세력처럼 합/충을 이진(있다/없다)으로 보지 않고, 연속적인 정도로 측정하는 것이 핵심입니다.</p>
+          <p style="margin-top:6px"><strong>오행 보완 분석:</strong> 한 사람에게 부족한 오행을 상대가 채워주면 "보완"(좋음), 둘 다 비슷하면 "조화", 둘 다 부족하면 "공통 부족"(주의)입니다.</p>
+        </div>
+      </section>
+    </section>
+  </div>
+
+  <script src="js/lib/sajuwiki/korean-lunar-calendar.min.js"></script>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
