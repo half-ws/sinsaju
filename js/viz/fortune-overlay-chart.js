@@ -160,21 +160,45 @@ export class FortuneOverlayChart extends CircularChart {
       return;
     }
 
-    // Resolve fortune entries with continuous angles (same principle as natal pillars)
+    // Resolve fortune entries — current entry uses time-based progression
+    const now = new Date();
     const points = [];
     for (const entry of entries) {
       const idx60 = resolveIdx60(entry);
       if (idx60 == null) continue;
       const branchIdx = idx60 % 12;
-      const angle = idx60ToContinuousAngle(idx60);
+      const branchCenter = branchIdx * 30;
       const startAge = entry.startAge ?? entry.age ?? null;
       const year = entry.year ?? entry.calYear ?? null;
 
       let isCurrent = false;
+      let angle;
+
       if (type === 'daeun' && currentAge != null && startAge != null) {
         isCurrent = currentAge >= startAge && currentAge < startAge + 10;
+        if (isCurrent) {
+          // Time progression within 10-year period (with month fraction)
+          const monthFrac = (now.getMonth() + now.getDate() / 30) / 12;
+          const progression = Math.max(0, Math.min(1, (currentAge + monthFrac - startAge) / 10));
+          const offset = (progression - 0.5) * 24;
+          angle = ((branchCenter + offset) % 360 + 360) % 360;
+        } else {
+          angle = idx60ToContinuousAngle(idx60);
+        }
       } else if (type === 'saeun' && year != null) {
         isCurrent = year === currentYear;
+        if (isCurrent) {
+          // Progression within 인월~축월 cycle (입춘 ~Feb 4)
+          const ipchun = new Date(currentYear, 1, 4);
+          const daysSince = (now - ipchun) / 86400000;
+          const progression = Math.max(0, Math.min(1, daysSince / 365));
+          const offset = (progression - 0.5) * 24;
+          angle = ((branchCenter + offset) % 360 + 360) % 360;
+        } else {
+          angle = idx60ToContinuousAngle(idx60);
+        }
+      } else {
+        angle = idx60ToContinuousAngle(idx60);
       }
 
       points.push({ branchIdx, angle, startAge, year, isCurrent, idx60 });

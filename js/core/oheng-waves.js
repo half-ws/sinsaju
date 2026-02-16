@@ -20,8 +20,8 @@ const OHENG_KEYS = ['목', '화', '토', '금', '수'];
 /** Wave-only keys (토 excluded — rendered as background band) */
 const WAVE_KEYS = ['수', '목', '화', '금'];
 
-/** Peak angles for the four seasonal elements (shifted +10° = 1/3 branch rightward) */
-const ELEMENT_PEAKS = { 수: 10, 목: 100, 화: 190, 금: 280 };
+/** Peak angles for the four seasonal elements (aligned to branch centers) */
+const ELEMENT_PEAKS = { 수: 0, 목: 90, 화: 180, 금: 270 };
 
 /** Peak angles for the 천간 (heavenly stem) elements — between each pair */
 const CHEONGAN_PEAKS = { 목: 18, 화: 90, 토: 162, 금: 234, 수: 306 };

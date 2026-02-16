@@ -115,11 +115,7 @@ export class CircularChart {
       const element = branchToElement(i);
       const color = ohengColor(element, 'main');
 
-      // Apple HIG uniform sector colors
-      let opacity = 0.30;
-      if (pillarData && pillarData.branchInfluences) {
-        opacity = 0.20 + pillarData.branchInfluences[i] * 0.45;
-      }
+      const opacity = 0.30;
 
       const path = svgEl('path', {
         d: arcPath(this.cx, this.cy, ring.inner, ring.r, startAngle, endAngle),
