@@ -162,8 +162,18 @@ export class FortuneOverlayChart extends CircularChart {
 
     // Resolve fortune entries — current entry uses time-based progression
     const now = new Date();
+
+    // 세운: 현재 ±5년으로 제한 (너무 많은 엔트리가 차트를 어지럽히므로)
+    let filteredEntries = entries;
+    if (type === 'saeun') {
+      filteredEntries = entries.filter(e => {
+        const y = e.year ?? e.calYear;
+        return y != null && Math.abs(y - currentYear) <= 5;
+      });
+    }
+
     const points = [];
-    for (const entry of entries) {
+    for (const entry of filteredEntries) {
       const idx60 = resolveIdx60(entry);
       if (idx60 == null) continue;
       const branchIdx = idx60 % 12;
@@ -177,7 +187,6 @@ export class FortuneOverlayChart extends CircularChart {
       if (type === 'daeun' && currentAge != null && startAge != null) {
         isCurrent = currentAge >= startAge && currentAge < startAge + 10;
         if (isCurrent) {
-          // Time progression within 10-year period (with month fraction)
           const monthFrac = (now.getMonth() + now.getDate() / 30) / 12;
           const progression = Math.max(0, Math.min(1, (currentAge + monthFrac - startAge) / 10));
           const offset = (progression - 0.5) * 24;
@@ -188,7 +197,6 @@ export class FortuneOverlayChart extends CircularChart {
       } else if (type === 'saeun' && year != null) {
         isCurrent = year === currentYear;
         if (isCurrent) {
-          // Progression within 인월~축월 cycle (입춘 ~Feb 4)
           const ipchun = new Date(currentYear, 1, 4);
           const daysSince = (now - ipchun) / 86400000;
           const progression = Math.max(0, Math.min(1, daysSince / 365));
@@ -204,21 +212,25 @@ export class FortuneOverlayChart extends CircularChart {
       points.push({ branchIdx, angle, startAge, year, isCurrent, idx60 });
     }
 
-    // Highlight sectors
+    // Highlight sectors — 현재 항목만 강조, 나머지는 지지 중심으로 얇게 표시
     for (const p of points) {
-      const sa = p.angle - 15, ea = p.angle + 15;
       const color = ohengColor(branchToElement(p.branchIdx), 'main');
-      const opacity = p.isCurrent ? 0.60 : 0.30;
-
-      g.appendChild(svgEl('path', {
-        d: arcPath(this.cx, this.cy, ring.inner + 0.5, ring.r - 0.5, sa, ea),
-        fill: color, opacity: opacity.toFixed(3),
-      }));
-
       if (p.isCurrent) {
+        const sa = p.branchIdx * 30 - 15, ea = p.branchIdx * 30 + 15;
+        g.appendChild(svgEl('path', {
+          d: arcPath(this.cx, this.cy, ring.inner + 0.5, ring.r - 0.5, sa, ea),
+          fill: color, opacity: '0.55',
+        }));
         g.appendChild(svgEl('path', {
           d: arcPath(this.cx, this.cy, ring.inner, ring.r, sa, ea),
           fill: 'none', stroke: '#D4A800', 'stroke-width': 2, opacity: '0.9',
+        }));
+      } else {
+        // 비현재 엔트리: 지지 중심으로 얇은 표시만
+        const sa = p.branchIdx * 30 - 15, ea = p.branchIdx * 30 + 15;
+        g.appendChild(svgEl('path', {
+          d: arcPath(this.cx, this.cy, ring.inner + 0.5, ring.r - 0.5, sa, ea),
+          fill: color, opacity: '0.18',
         }));
       }
     }
@@ -237,7 +249,7 @@ export class FortuneOverlayChart extends CircularChart {
       }));
     }
 
-    // Dots
+    // Dots — 현재 강조, 비현재는 작은 점만
     const midR = (ring.inner + ring.r) / 2;
     for (const p of points) {
       const pt = pointOnCircle(this.cx, this.cy, midR, p.angle);
@@ -248,14 +260,17 @@ export class FortuneOverlayChart extends CircularChart {
           cx: pt.x, cy: pt.y, r: 7,
           fill: 'none', stroke: '#FFD700', 'stroke-width': 2, opacity: '0.8'
         }));
+        g.appendChild(svgEl('circle', {
+          cx: pt.x, cy: pt.y, r: 4,
+          fill: elemColor, stroke: '#FFD700', 'stroke-width': 1.5,
+        }));
+      } else {
+        g.appendChild(svgEl('circle', {
+          cx: pt.x, cy: pt.y, r: 2,
+          fill: elemColor, opacity: '0.5',
+          stroke: '#fff', 'stroke-width': 0.3,
+        }));
       }
-
-      g.appendChild(svgEl('circle', {
-        cx: pt.x, cy: pt.y, r: p.isCurrent ? 4 : 2.5,
-        fill: elemColor,
-        stroke: p.isCurrent ? '#FFD700' : '#fff',
-        'stroke-width': p.isCurrent ? 1.5 : 0.5,
-      }));
     }
 
     this.svg.appendChild(g);

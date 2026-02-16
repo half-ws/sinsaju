@@ -47,6 +47,13 @@ const FORTUNE_INTERACTION_W = {
   hour: 0.5
 };
 
+/**
+ * 운세 합충 감쇄 계수.
+ * 운세 기둥은 일시적(transient)이므로 원국 내부 합충 대비 약하게 적용.
+ * 0.35 = 원국 내부 합충의 35% 강도.
+ */
+const FORTUNE_DAMPEN = 0.35;
+
 // ═══════════════════════════════════════════════════
 // 핵심 API
 // ═══════════════════════════════════════════════════
@@ -169,18 +176,19 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
     _applyBanhap(bd, p1, p2, interactions);
   }
 
-  // 2-2. 운세 vs 원국 합충
+  // 2-2. 운세 vs 원국 합충 (FORTUNE_DAMPEN 적용)
   for (const fp of fortunePositions) {
     for (const np of natalPositions) {
       const iw = FORTUNE_INTERACTION_W[np] || 0.5;
+      const damp = FORTUNE_DAMPEN;
 
       // 천간 합충
       for (const rel of OhengAnalyzer.checkStemPair(sd[fp].si, sd[np].si)) {
         if (rel.type === '합') {
           const m = rel.desc.match(/합\((.)\)/);
           if (m) {
-            const fFortune = 1/3 * iw;
-            const fNatal = 1/3 * iw;
+            const fFortune = 1/3 * iw * damp;
+            const fNatal = 1/3 * iw * damp;
             sd[fp].tr.push({ e: m[1], f: fFortune });
             sd[fp].of *= (1 - fFortune);
             sd[np].tr.push({ e: m[1], f: fNatal });
@@ -188,8 +196,8 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
             interactions.push({ type: '천간합', source: fp, target: np, desc: rel.desc });
           }
         } else if (rel.type === '충') {
-          const fFortune = 1/3 * iw;
-          const fNatal = 1/3 * iw;
+          const fFortune = 1/3 * iw * damp;
+          const fNatal = 1/3 * iw * damp;
           sd[fp].of *= (1 - fFortune);
           sd[np].of *= (1 - fNatal);
           interactions.push({ type: '천간충', source: fp, target: np, desc: '충' });
@@ -201,8 +209,8 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
         if (rel.type === '합') {
           const m = rel.desc.match(/합\((.)\)/);
           if (m) {
-            const fFortune = 2/3 * iw;
-            const fNatal = 2/3 * iw;
+            const fFortune = 2/3 * iw * damp;
+            const fNatal = 2/3 * iw * damp;
             bd[fp].tr.push({ e: m[1], f: fFortune });
             bd[fp].of *= (1 - fFortune);
             bd[np].tr.push({ e: m[1], f: fNatal });
@@ -210,8 +218,8 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
             interactions.push({ type: '지지합', source: fp, target: np, desc: rel.desc });
           }
         } else if (rel.type === '충') {
-          const fFortune = 2/3 * iw;
-          const fNatal = 2/3 * iw;
+          const fFortune = 2/3 * iw * damp;
+          const fNatal = 2/3 * iw * damp;
           bd[fp].of *= (1 - fFortune);
           bd[np].of *= (1 - fNatal);
           interactions.push({ type: '지지충', source: fp, target: np, desc: '충' });
@@ -224,7 +232,7 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
   }
 
   // 2-3. 삼합 검출 (원국 + 운세 혼합)
-  _applyTripleCombine(bd, allPositions, interactions);
+  _applyTripleCombine(bd, allPositions, interactions, fortunePositions);
 
   // ── Step 3: 가중 오행 합산 ──
   const oh = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
@@ -325,7 +333,7 @@ function _applyBanhap(bd, p1, p2, interactions) {
   interactions.push({ type: '반합', source: p1, target: p2, desc: `반합(${el})` });
 }
 
-/** 반합 처리 (운세 vs 원국, 가중치 적용) */
+/** 반합 처리 (운세 vs 원국, 가중치 + 감쇄 적용) */
 function _applyBanhapWithWeight(bd, fp, np, iw, interactions) {
   const bi1 = bd[fp].bi, bi2 = bd[np].bi;
   let el = null;
@@ -334,7 +342,7 @@ function _applyBanhapWithWeight(bd, fp, np, iw, interactions) {
   }
   if (!el) return;
 
-  const f = 1/3 * iw;
+  const f = 1/3 * iw * FORTUNE_DAMPEN;
   bd[fp].tr.push({ e: el, f });
   bd[fp].of *= (1 - f);
   bd[np].tr.push({ e: el, f });
@@ -343,8 +351,9 @@ function _applyBanhapWithWeight(bd, fp, np, iw, interactions) {
 }
 
 /** 삼합 검출 (원국 + 운세 전체 지지에서 3개 조합 탐색) */
-function _applyTripleCombine(bd, allPositions, interactions) {
+function _applyTripleCombine(bd, allPositions, interactions, fortunePositions = []) {
   const branches = allPositions.map(p => ({ pos: p, bi: bd[p].bi }));
+  const fortuneSet = new Set(fortunePositions);
 
   for (const [a, b, c, el] of TRIPLE_COMBINE) {
     const posA = branches.filter(x => x.bi === a).map(x => x.pos);
@@ -352,15 +361,15 @@ function _applyTripleCombine(bd, allPositions, interactions) {
     const posC = branches.filter(x => x.bi === c).map(x => x.pos);
 
     if (posA.length > 0 && posB.length > 0 && posC.length > 0) {
-      // 삼합 성립: 관련 지지들에 변환 적용
       const allTriple = [...posA, ...posB, ...posC];
-      // 중복 방지: 이미 처리된 삼합 스킵
-      const key = [a, b, c].sort().join(',');
+      // 운세 기둥이 포함된 삼합은 감쇄 적용
+      const hasFortune = allTriple.some(p => fortuneSet.has(p));
+      const damp = hasFortune ? FORTUNE_DAMPEN : 1;
 
       for (const pos of allTriple) {
-        const f = 2/3;
-        bd[pos].tr.push({ e: el, f: f * 0.5 }); // 삼합은 50% 강도로 추가 적용
-        bd[pos].of *= (1 - f * 0.5);
+        const f = 2/3 * 0.5 * damp; // 삼합 기본 50% 강도 × 감쇄
+        bd[pos].tr.push({ e: el, f });
+        bd[pos].of *= (1 - f);
       }
 
       interactions.push({
