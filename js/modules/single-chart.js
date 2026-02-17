@@ -158,9 +158,6 @@ export class SingleChart {
       this.fortuneOverlayChart.render(chartData);
     }
 
-    // Continuous pillar data (shared by 천간 + 지지 waveforms)
-    const cont = chartData.continuous;
-
     // 3. 천간 오행 파형 (stem markers follow branch relative position)
     const cheonganWaveData = generateCheonganWaves(360);
     const stemData = {};
