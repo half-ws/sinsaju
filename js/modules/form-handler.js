@@ -2,6 +2,8 @@
  * form-handler.js — Form input handling and validation
  */
 
+import { getMeridian } from './longitude-correction.js';
+
 export class FormHandler {
   constructor(formEl, onSubmit) {
     this.form = typeof formEl === 'string'
@@ -30,6 +32,9 @@ export class FormHandler {
     const gender = document.querySelector('input[name="gender"]:checked')?.value || 'm';
     const calendar = document.querySelector('input[name="calendar"]:checked')?.value || 'solar';
     const longitude = parseFloat(document.getElementById('in-longitude').value) || 127.0;
+    const countryEl = document.getElementById('in-country');
+    const country = countryEl ? countryEl.value : '한국';
+    const meridian = getMeridian(country);
 
     // Validate required fields
     if (isNaN(year) || isNaN(month) || isNaN(day)) {
@@ -49,6 +54,6 @@ export class FormHandler {
       return null;
     }
 
-    return { year, month, day, hour, minute, gender, calendar, longitude };
+    return { year, month, day, hour, minute, gender, calendar, longitude, meridian };
   }
 }

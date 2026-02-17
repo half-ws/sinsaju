@@ -61,6 +61,22 @@
                 <label class="radio-label"><input type="radio" name="calendar" value="lunar"> 음력</label>
               </div>
             </div>
+            <div class="form-group country-group">
+              <label>국가</label>
+              <select id="in-country" class="city-select">
+                <option value="한국" selected>한국</option>
+                <option value="일본">일본</option>
+                <option value="중국">중국</option>
+                <option value="대만">대만</option>
+                <option value="미국 동부">미국 동부</option>
+                <option value="미국 중부">미국 중부</option>
+                <option value="미국 서부">미국 서부</option>
+                <option value="영국">영국</option>
+                <option value="독일">독일</option>
+                <option value="프랑스">프랑스</option>
+                <option value="캐나다">캐나다</option>
+              </select>
+            </div>
             <div class="form-group city-group">
               <label>출생지</label>
               <select id="in-city" class="city-select">
@@ -84,7 +100,7 @@
             </div>
             <div class="form-group longitude-group">
               <label>경도</label>
-              <input type="number" id="in-longitude" step="0.01" value="126.98" min="0" max="180">
+              <input type="number" id="in-longitude" step="0.01" value="126.98" min="-180" max="180">
             </div>
           </div>
           <button type="submit" class="btn-calculate">분석하기</button>
@@ -94,38 +110,18 @@
       <section id="results" class="results-section" style="display:none;">
         <div id="correction-info" class="correction-info" style="display:none;"></div>
 
-        <!-- 사주 4기둥 -->
-        <div id="pillar-display" class="chart-container pillar-container"></div>
-        <div class="chart-desc">
-          <p class="chart-desc-title">사주 4기둥 (Four Pillars)</p>
-          <p>오른쪽부터 년주 / 월주 / 일주 / 시주. 각 기둥의 위(천간)와 아래(지지)가 한 쌍이며, 일간(일주의 천간, 금색 테두리)이 "나 자신"을 대표합니다. 천간 위에 표시된 것은 일간 기준 십성(비견/겁재/식신 등), 지지 아래는 십이운성(장생/건록/제왕 등)입니다.</p>
+        <!-- 사주 4기둥 + 운세 기둥 -->
+        <div class="pillar-display-row" id="pillar-display-row">
+          <div id="fe-fortune-pillars" class="pillar-container fe-fortune-pillar-area" style="display:none"></div>
+          <div id="pillar-display" class="chart-container pillar-container"></div>
         </div>
 
-        <!-- 오행/십성 프로필 -->
-        <div class="chart-panel">
-          <h3 class="chart-title">오행 / 십성 분석</h3>
-          <div id="oheng-sipsung-panel" class="oheng-sipsung-container"></div>
-          <div class="chart-desc chart-desc-inner">
-            <p>천간(위치 가중치: 월20, 일15, 년10, 시8)과 지지(월30, 일20, 년15, 시15)의 오행을 합산하여 정확한 비율을 도출합니다. 합충(천간합/지지합/충/반합)에 의한 오행 변환도 반영됩니다. 십성은 일간 기준으로 모든 위치의 관계를 가중 합산한 분포입니다.</p>
-          </div>
+        <!-- 신 사주 차트 (사주명식 바로 아래) -->
+        <div class="chart-panel" id="fortune-explorer-wrapper" style="display:none">
+          <h3 class="chart-title">신 사주 차트</h3>
+          <div id="fortune-explorer"></div>
         </div>
 
-        <!-- 원형 차트 2종 (연속 + 대운/세운 오버레이) -->
-        <div class="charts-row">
-          <div class="chart-panel chart-half">
-            <h3 class="chart-title">연속 원형 차트</h3>
-            <div id="circular-chart" class="circular-chart-container"></div>
-          </div>
-          <div class="chart-panel chart-half">
-            <h3 class="chart-title">원형 차트 (대운/세운)</h3>
-            <div id="fortune-overlay-chart" class="circular-chart-container"></div>
-          </div>
-        </div>
-        <div class="chart-desc">
-          <p class="chart-desc-title">원형 차트 해석</p>
-          <p><strong>연속 원형 차트</strong>(좌): 4개 동심원 = 바깥부터 년주 / 월주 / 일주 / 시주. 각 고리의 12칸은 12지지(子~亥)이며, 오행 색상(녹=목, 적=화, 황=토, 회=금, 청=수)으로 칠해집니다. <strong>금색 선</strong> = 출생 시점의 정확한 각도 위치. 최내곽 고리는 각 지지의 지장간(숨은 천간) 구성을 비율별 색상으로 표현합니다. 고리 사이 연결선: 초록=합, 빨강=충.</p>
-          <p style="margin-top:6px"><strong>대운/세운 원형 차트</strong>(우): 원반 차트 위에 대운과 세운이 겹쳐져 표시됩니다. <strong>원형 점</strong>들은 각 대운의 12지지 위치이며, 점선으로 연결되어 대운의 흐름 방향을 보여줍니다. 금색 테두리 = 현재 대운. <strong>다이아몬드</strong> 마커 = 올해 세운의 지지 위치.</p>
-        </div>
 
         <!-- 천간 오행 파형 -->
         <div class="chart-panel waveform-panel">
@@ -156,15 +152,6 @@
           <div id="fortune-timeseries-chart" class="waveform-chart-container"></div>
           <div class="chart-desc chart-desc-inner">
             <p>X축 = 연도, Y축 = 비율(%). <strong>점선</strong> = 사주원국 기준값, <strong>실선</strong> = 대운+세운 반영값. 수직 점선 = 대운 경계. 대운이 바뀔 때마다 기본 오행 구성이 변하고, 세운(매년)에 따라 미세하게 변동합니다. 합충 발생 연도에는 X축 위에 마커(녹=합, 적=충)가 표시됩니다. 마우스를 올리면 해당 연도의 상세 정보를 확인할 수 있습니다.</p>
-          </div>
-        </div>
-
-        <!-- 운세 탐색기 -->
-        <div class="chart-panel" id="fortune-explorer-wrapper" style="display:none">
-          <h3 class="chart-title">운세 탐색기</h3>
-          <div id="fortune-explorer"></div>
-          <div class="chart-desc chart-desc-inner">
-            <p>슬라이더를 좌우로 드래그하여 특정 연도의 운세 적용 오행/십성을 확인합니다. 좌측은 사주원국(운세 미적용) 기준값이고, 우측은 해당 연도의 대운+세운이 적용된 값입니다. 델타 값은 원국 대비 변화량입니다.</p>
           </div>
         </div>
 

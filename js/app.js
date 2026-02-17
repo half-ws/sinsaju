@@ -8,6 +8,7 @@ import { SingleChart } from './modules/single-chart.js';
 import { GunghapModule } from './modules/gunghap-module.js';
 import { BirthMoment } from './models/birth-moment.js';
 import { appState } from './core/state.js';
+import { LOCATIONS } from './modules/longitude-correction.js';
 
 class SinsajuApp {
   constructor() {
@@ -43,15 +44,35 @@ class SinsajuApp {
       btn.addEventListener('click', () => this._switchTab(btn.dataset.tab));
     });
 
-    // City select → longitude sync
+    // Country → City → Longitude sync
+    const countrySelect = document.getElementById('in-country');
     const citySelect = document.getElementById('in-city');
     const lonInput = document.getElementById('in-longitude');
-    if (citySelect && lonInput) {
+    if (countrySelect && citySelect && lonInput) {
+      // 국가 변경 → 도시 목록 갱신 + 첫 번째 도시 경도 설정
+      countrySelect.addEventListener('change', () => {
+        const loc = LOCATIONS[countrySelect.value];
+        if (!loc) return;
+        citySelect.innerHTML = '<option value="">직접 입력</option>';
+        for (const [name, lng] of Object.entries(loc.cities)) {
+          const opt = document.createElement('option');
+          opt.value = lng;
+          opt.textContent = name;
+          citySelect.appendChild(opt);
+        }
+        const firstCity = Object.entries(loc.cities)[0];
+        if (firstCity) {
+          citySelect.value = String(firstCity[1]);
+          lonInput.value = firstCity[1];
+        }
+      });
+      // 도시 변경 → 경도 갱신
       citySelect.addEventListener('change', () => {
         if (citySelect.value) {
           lonInput.value = citySelect.value;
         }
       });
+      // 경도 직접 입력 → 도시 리셋
       lonInput.addEventListener('input', () => {
         citySelect.value = '';
       });

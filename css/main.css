@@ -300,6 +300,97 @@ body {
   letter-spacing: 0.03em;
 }
 
+/* ----- Pillar Display Row (natal + fortune pillars) ----- */
+.pillar-display-row {
+  display: flex;
+  align-items: stretch;
+  gap: 0;
+}
+.pillar-display-row #pillar-display {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Fortune pillar area (대운/세운 cards, left of natal) */
+.fe-fortune-pillar-area {
+  flex: none;
+  border-right: none;
+  border-top-right-radius: 0;
+  border-bottom-right-radius: 0;
+  padding: 28px 16px 28px 24px;
+  position: relative;
+}
+.fe-fortune-pillar-area::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  top: 20%;
+  bottom: 20%;
+  width: 1px;
+  background: var(--card-border);
+}
+.pillar-display-row.has-fortune-pillars {
+  box-shadow: var(--shadow);
+  border-radius: var(--radius);
+}
+.pillar-display-row.has-fortune-pillars .pillar-container {
+  box-shadow: none;
+}
+.pillar-display-row.has-fortune-pillars #pillar-display.pillar-container {
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+  border-left: none;
+}
+
+.fe-pillar-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  height: 100%;
+  align-content: start;
+  direction: ltr;
+}
+
+.fe-pillar-card {
+  opacity: 0.88;
+}
+
+@media (max-width: 640px) {
+  .pillar-display-row {
+    flex-direction: column;
+  }
+  .fe-fortune-pillar-area {
+    border-right: 1px solid var(--card-border);
+    border-bottom: none;
+    border-top-right-radius: var(--radius);
+    border-bottom-left-radius: 0;
+    border-bottom-right-radius: 0;
+    padding: 20px 16px 12px;
+  }
+  .fe-fortune-pillar-area::after {
+    top: auto;
+    bottom: 0;
+    left: 10%;
+    right: 10%;
+    width: auto;
+    height: 1px;
+  }
+  .pillar-display-row.has-fortune-pillars #pillar-display.pillar-container {
+    border-top-left-radius: 0;
+    border-top-right-radius: 0;
+    border-bottom-left-radius: var(--radius);
+    border-bottom-right-radius: var(--radius);
+    border-left: 1px solid var(--card-border);
+    border-top: none;
+  }
+  .fe-fortune-pillar-area {
+    border-bottom-left-radius: 0 !important;
+  }
+  .fe-pillar-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
 /* ----- Pillar Display ----- */
 .pillar-container {
   background: var(--card);

@@ -35,8 +35,9 @@ export class FortuneOverlayChart extends CircularChart {
     super(container, options);
   }
 
-  render(chartData, fortuneData) {
+  render(chartData, fortuneData, targetYear = null) {
     this._fortuneData = fortuneData || null;
+    this._targetYear = targetYear;
 
     if (!fortuneData) {
       super.render(chartData);
@@ -80,7 +81,7 @@ export class FortuneOverlayChart extends CircularChart {
     const centerR = jjRing.inner - gap;
 
     // ── Draw ──
-    const currentYear = new Date().getFullYear();
+    const currentYear = targetYear ?? new Date().getFullYear();
     const birthYear = fortuneData.birthYear;
     const currentAge = birthYear != null ? currentYear - birthYear : null;
 
@@ -112,18 +113,27 @@ export class FortuneOverlayChart extends CircularChart {
     this.container.appendChild(this.svg);
   }
 
-  /** Override: smaller labels to fit with fortune rings */
+  /** Override: prominent labels outside fortune rings */
   _drawBranchLabels(radius) {
     const g = svgEl('g', { class: 'branch-labels' });
+    const fontSize = this.size <= 360 ? 30 : 26;
+    const discR = fontSize * 0.7;
     for (let i = 0; i < 12; i++) {
       const angle = i * 30;
       const pt = pointOnCircle(this.cx, this.cy, radius, angle);
+      // White disc background for contrast
+      g.appendChild(svgEl('circle', {
+        cx: pt.x, cy: pt.y, r: discR,
+        fill: '#ffffff', opacity: '0.85',
+      }));
       const text = svgEl('text', {
         x: pt.x, y: pt.y,
         'text-anchor': 'middle', 'dominant-baseline': 'central',
         fill: ohengColor(branchToElement(i), 'main'),
-        'font-size': '24', 'font-weight': '700',
-        'font-family': "'Noto Serif KR', serif"
+        'font-size': String(fontSize), 'font-weight': '800',
+        'font-family': "'Noto Serif KR', serif",
+        stroke: ohengColor(branchToElement(i), 'main'),
+        'stroke-width': '0.5', 'paint-order': 'stroke',
       });
       text.textContent = JIJI_HANJA[i];
       g.appendChild(text);
@@ -161,7 +171,7 @@ export class FortuneOverlayChart extends CircularChart {
     }
 
     // Resolve fortune entries — current entry uses time-based progression
-    const now = new Date();
+    const now = this._targetYear ? null : new Date();
 
     // 세운: 현재 ±5년으로 제한 (너무 많은 엔트리가 차트를 어지럽히므로)
     let filteredEntries = entries;
@@ -187,8 +197,14 @@ export class FortuneOverlayChart extends CircularChart {
       if (type === 'daeun' && currentAge != null && startAge != null) {
         isCurrent = currentAge >= startAge && currentAge < startAge + 10;
         if (isCurrent) {
-          const monthFrac = (now.getMonth() + now.getDate() / 30) / 12;
-          const progression = Math.max(0, Math.min(1, (currentAge + monthFrac - startAge) / 10));
+          let progression;
+          if (now) {
+            const monthFrac = (now.getMonth() + now.getDate() / 30) / 12;
+            progression = Math.max(0, Math.min(1, (currentAge + monthFrac - startAge) / 10));
+          } else {
+            // Slider mode: mid-year approximation
+            progression = Math.max(0, Math.min(1, (currentAge + 0.5 - startAge) / 10));
+          }
           const offset = (progression - 0.5) * 24;
           angle = ((branchCenter + offset) % 360 + 360) % 360;
         } else {
@@ -197,9 +213,14 @@ export class FortuneOverlayChart extends CircularChart {
       } else if (type === 'saeun' && year != null) {
         isCurrent = year === currentYear;
         if (isCurrent) {
-          const ipchun = new Date(currentYear, 1, 4);
-          const daysSince = (now - ipchun) / 86400000;
-          const progression = Math.max(0, Math.min(1, daysSince / 365));
+          let progression;
+          if (now) {
+            const ipchun = new Date(currentYear, 1, 4);
+            const daysSince = (now - ipchun) / 86400000;
+            progression = Math.max(0, Math.min(1, daysSince / 365));
+          } else {
+            progression = 0.5; // mid-year
+          }
           const offset = (progression - 0.5) * 24;
           angle = ((branchCenter + offset) % 360 + 360) % 360;
         } else {

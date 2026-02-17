@@ -216,15 +216,24 @@ export class CircularChart {
 
   _drawBranchLabels(radius) {
     const g = svgEl('g', { class: 'branch-labels' });
+    const fontSize = this.size <= 360 ? 32 : 34;
+    const discR = fontSize * 0.65;
     for (let i = 0; i < 12; i++) {
       const angle = i * 30;
       const pt = pointOnCircle(this.cx, this.cy, radius, angle);
+      // White disc background for contrast
+      g.appendChild(svgEl('circle', {
+        cx: pt.x, cy: pt.y, r: discR,
+        fill: '#ffffff', opacity: '0.85',
+      }));
       const text = svgEl('text', {
         x: pt.x, y: pt.y,
         'text-anchor': 'middle', 'dominant-baseline': 'central',
         fill: ohengColor(branchToElement(i), 'main'),
-        'font-size': '34', 'font-weight': '700',
-        'font-family': "'Noto Serif KR', serif"
+        'font-size': String(fontSize), 'font-weight': '800',
+        'font-family': "'Noto Serif KR', serif",
+        stroke: ohengColor(branchToElement(i), 'main'),
+        'stroke-width': '0.5', 'paint-order': 'stroke',
       });
       text.textContent = JIJI_HANJA[i];
       g.appendChild(text);
