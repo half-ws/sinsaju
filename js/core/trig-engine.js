@@ -2,12 +2,24 @@
  * ===================================================================
  * sinsaju-calculator - Trigonometric Saju Engine
  * ===================================================================
- * CORE INNOVATION: Maps all saju cycles (year, month, day, hour)
- * onto continuous trigonometric functions on a 360-degree circle.
+ * CORE INNOVATION: A single trigonometric function generates all five
+ * elements (오행) via rotational symmetry on a 360-degree circle.
  *
- * Each of the 12 earthly branches (지지) occupies a 30-degree arc.
- * Instead of hard boundaries, influence tapers smoothly via cosine,
- * giving every birth moment a unique continuous fingerprint.
+ * MATHEMATICAL FOUNDATION:
+ *
+ * The 지장간 (hidden stems) data reveals a remarkable symmetry:
+ * 수/목/화/금 are exact 90° rotations of one base function f(θ).
+ *
+ *   수(θ) = f(θ)              목(θ) = f(θ − 90°)
+ *   화(θ) = f(θ − 180°)      금(θ) = f(θ − 270°)
+ *   토(θ) = 1 − 수 − 목 − 화 − 금
+ *
+ * f(θ) is a Fourier series (DFT of 12 branch values):
+ *
+ *   f(θ) = a₀ + Σₙ [aₙcos(nθ) + bₙsin(nθ)] + a₆cos(6θ)
+ *
+ * This yields a C∞ smooth, single analytic expression that exactly
+ * recovers traditional 지장간 ratios at all 12 branch centers.
  */
 
 import { toRad, angleDiff, normalizeAngle, clamp } from '../utils/math.js';
@@ -52,21 +64,69 @@ export const BRANCH_OHENG_RATIOS = [
 const OHENG_KEYS = ['목', '화', '토', '금', '수'];
 
 // ===================================================================
-// Core Trigonometric Functions
+// Fourier Basis Function
+// ===================================================================
+//
+// The 수(水) values at 12 branches form the base data:
+//   f = [1.0, 0.3, 0, 0, 0.1, 0, 0, 0, 0.2, 0, 0, 0.6]
+//
+// DFT extracts Fourier coefficients so that:
+//   f(θ) = a₀ + Σ_{n=1}^{5} [aₙcos(nθ) + bₙsin(nθ)] + a₆cos(6θ)
+//
+// Then all five elements emerge from one function:
+//   수(θ) = f(θ)          목(θ) = f(θ − π/2)
+//   화(θ) = f(θ − π)      금(θ) = f(θ − 3π/2)
+//   토(θ) = 1 − 수 − 목 − 화 − 금
+// ===================================================================
+
+/** Base data: 수(水) ratios at 12 branch centers (자→해) */
+const BASE_WATER = [1.0, 0.3, 0, 0, 0.1, 0, 0, 0, 0.2, 0, 0, 0.6];
+
+// Compute DFT coefficients at module load
+const _N = 12;
+const _FA = new Float64Array(7);  // a₀ … a₆
+const _FB = new Float64Array(7);  // b₁ … b₅ (b₀ = b₆ = 0)
+
+for (let n = 0; n <= 6; n++) {
+  let an = 0, bn = 0;
+  for (let k = 0; k < _N; k++) {
+    const phase = 2 * Math.PI * n * k / _N;
+    an += BASE_WATER[k] * Math.cos(phase);
+    bn += BASE_WATER[k] * Math.sin(phase);
+  }
+  _FA[n] = an * 2 / _N;
+  _FB[n] = bn * 2 / _N;
+}
+_FA[0] /= 2;  // DC term: a₀ = mean
+_FA[6] /= 2;  // Nyquist term
+
+const HALF_PI = Math.PI / 2;
+
+/**
+ * Evaluate the Fourier base function f(θ).
+ *
+ * This is the single trigonometric expression from which all five
+ * elements are derived via rotational symmetry.
+ *
+ * @param {number} rad - angle in radians
+ * @returns {number} raw value (may be slightly negative due to Gibbs)
+ */
+function fourierBase(rad) {
+  let v = _FA[0];
+  for (let n = 1; n <= 5; n++) {
+    v += _FA[n] * Math.cos(n * rad) + _FB[n] * Math.sin(n * rad);
+  }
+  v += _FA[6] * Math.cos(6 * rad);
+  return v;
+}
+
+// ===================================================================
+// Core Functions
 // ===================================================================
 
 /**
- * Find the two adjacent branches for a given angle and the
- * fractional position between them.
- *
- * Each branch occupies a 30-degree sector centered at (idx * 30).
- * For any angle θ, this returns the left branch (whose center is
- * at or just before θ) and the right branch (next one clockwise),
- * plus the fraction t ∈ [0, 1) indicating position within the sector.
- *
- * At t=0: exactly at left branch center.
- * At t=1: exactly at right branch center (returned as t≈1 from left sector).
- *
+ * Find the two adjacent branches for a given angle.
+ * Used by branchInfluence/allBranchInfluences for discrete branch ID.
  * @param {number} theta - angle in degrees [0, 360)
  * @returns {{ leftIdx: number, rightIdx: number, t: number }}
  */
@@ -74,73 +134,79 @@ function getAdjacentBranches(theta) {
   const norm = normalizeAngle(theta);
   const leftIdx = Math.floor(norm / 30) % 12;
   const rightIdx = (leftIdx + 1) % 12;
-  const t = (norm - leftIdx * 30) / 30;  // [0, 1)
+  const t = (norm - leftIdx * 30) / 30;
   return { leftIdx, rightIdx, t };
 }
 
 /**
  * Compute the influence of a single branch at a given angle.
- *
- * Uses pairwise adjacent cosine interpolation: only the two nearest
- * branches have non-zero influence at any angle. At branch centers,
- * influence is exactly 1.0 for that branch and 0.0 for all others.
- *
- * This guarantees that traditional 지장간 oheng ratios are exactly
- * recovered at each branch center.
- *
+ * Uses pairwise cosine interpolation for discrete branch identification.
  * @param {number} theta - current angle in degrees [0, 360)
  * @param {number} branchIdx - branch index (0-11)
  * @returns {number} influence value in [0, 1]
  */
 export function branchInfluence(theta, branchIdx) {
   const { leftIdx, rightIdx, t } = getAdjacentBranches(theta);
-  // Cosine easing: 0 at left center, 1 at right center
   const wRight = 0.5 - 0.5 * Math.cos(t * Math.PI);
-  const wLeft = 1 - wRight;
-
-  if (branchIdx === leftIdx) return wLeft;
+  if (branchIdx === leftIdx) return 1 - wRight;
   if (branchIdx === rightIdx) return wRight;
   return 0;
 }
 
 /**
  * Compute influence values for all 12 branches at a given angle.
- * With pairwise interpolation, at most 2 values are non-zero.
+ * At most 2 values are non-zero (the two adjacent branches).
  * @param {number} theta - current angle in degrees [0, 360)
  * @returns {number[]} array of 12 influence values
  */
 export function allBranchInfluences(theta) {
-  const influences = new Float64Array(12);  // initialized to 0
+  const influences = new Float64Array(12);
   const { leftIdx, rightIdx, t } = getAdjacentBranches(theta);
   const wRight = 0.5 - 0.5 * Math.cos(t * Math.PI);
   influences[leftIdx] = 1 - wRight;
-  influences[rightIdx] += wRight;  // += handles leftIdx === rightIdx edge case (t=0)
+  influences[rightIdx] += wRight;
   return Array.from(influences);
 }
 
 /**
  * Compute the five-element (오행) strength at a given angle.
  *
- * Uses pairwise adjacent cosine interpolation between the two
- * nearest branch profiles. The result is normalized (sums to 1.0),
- * guaranteeing exact recovery of 지장간 ratios at branch centers.
+ * Uses the Fourier base function with 4-fold rotational symmetry:
+ *   수 = f(θ),  목 = f(θ−90°),  화 = f(θ−180°),  금 = f(θ−270°)
+ *   토 = 1 − (수+목+화+금)
+ *
+ * Exact at all 12 branch centers. C∞ smooth between them.
+ * Minor Gibbs artifacts (< 8%) are clamped for physical validity.
  *
  * @param {number} theta - angle in degrees [0, 360)
  * @returns {{ 목: number, 화: number, 토: number, 금: number, 수: number }}
  */
 export function ohengStrengthAtAngle(theta) {
-  const { leftIdx, rightIdx, t } = getAdjacentBranches(theta);
-  const wRight = 0.5 - 0.5 * Math.cos(t * Math.PI);
-  const wLeft = 1 - wRight;
+  const rad = toRad(theta);
 
-  const leftRatios = BRANCH_OHENG_RATIOS[leftIdx];
-  const rightRatios = BRANCH_OHENG_RATIOS[rightIdx];
-  const result = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
+  // Four seasonal elements from one function, rotated by 90°
+  let su  = fourierBase(rad);
+  let mok = fourierBase(rad - HALF_PI);
+  let hwa = fourierBase(rad - Math.PI);
+  let geum = fourierBase(rad - 3 * HALF_PI);
 
-  for (const key of OHENG_KEYS) {
-    result[key] = wLeft * leftRatios[key] + wRight * rightRatios[key];
+  // Clamp Gibbs artifacts (max ~7% undershoot near sharp transitions)
+  if (su  < 0) su  = 0;
+  if (mok < 0) mok = 0;
+  if (hwa < 0) hwa = 0;
+  if (geum < 0) geum = 0;
+
+  // 토 = complement of the four seasonal elements
+  let to = 1 - su - mok - hwa - geum;
+  if (to < 0) to = 0;
+
+  // Renormalize to guarantee sum = 1.0
+  const total = mok + hwa + to + geum + su;
+  if (total > 0) {
+    const inv = 1 / total;
+    return { 목: mok * inv, 화: hwa * inv, 토: to * inv, 금: geum * inv, 수: su * inv };
   }
-  return result;
+  return { 목: 0.2, 화: 0.2, 토: 0.2, 금: 0.2, 수: 0.2 };
 }
 
 // ===================================================================

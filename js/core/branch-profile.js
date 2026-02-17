@@ -15,7 +15,8 @@
  *   - Continuous metrics: purity, stability, intensity
  */
 
-import { angleDiff, normalizeAngle, toRad } from '../utils/math.js';
+import { normalizeAngle } from '../utils/math.js';
+import { ohengStrengthAtAngle } from './trig-engine.js';
 
 // ===================================================================
 // Branch Profile Data
@@ -226,12 +227,9 @@ export function getAllBranchProfiles() {
 /**
  * Get a blended branch profile for any continuous angle on the circle.
  *
- * Uses pairwise adjacent cosine interpolation: only the two nearest
- * branches contribute. At branch centers (i*30°), the exact discrete
- * profile is recovered — guaranteeing traditional 지장간 ratios.
- *
- * Between centers, cosine easing provides C¹-smooth interpolation
- * of all numeric properties (ohengRatio, purity, stability, intensity).
+ * Oheng ratios are computed by the Fourier engine (C∞ smooth, exact
+ * at branch centers). Scalar properties (purity, stability, intensity)
+ * use pairwise cosine interpolation between adjacent branches.
  *
  * @param {number} angle - continuous angle in degrees [0, 360)
  * @returns {Object} blended profile with interpolated numeric values
@@ -239,39 +237,31 @@ export function getAllBranchProfiles() {
 export function getBlendedBranchProfile(angle) {
   const theta = normalizeAngle(angle);
 
-  // Find adjacent branches and fractional position
+  // Oheng ratio from the unified Fourier engine
+  const blendedOheng = ohengStrengthAtAngle(theta);
+
+  // Adjacent branches for scalar property blending + branch identification
   const leftIdx = Math.floor(theta / 30) % 12;
   const rightIdx = (leftIdx + 1) % 12;
-  const t = (theta - leftIdx * 30) / 30;  // [0, 1)
-
-  // Cosine easing weights: 0 at left center, 1 at right center
+  const t = (theta - leftIdx * 30) / 30;
   const wRight = 0.5 - 0.5 * Math.cos(t * Math.PI);
   const wLeft = 1 - wRight;
 
   const leftProfile = BRANCH_PROFILES[leftIdx];
   const rightProfile = BRANCH_PROFILES[rightIdx];
 
-  // Blend ohengRatio
-  const blendedOheng = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
-  for (const key of OHENG_KEYS) {
-    blendedOheng[key] = wLeft * leftProfile.ohengRatio[key] + wRight * rightProfile.ohengRatio[key];
-  }
-
-  // Blend scalar properties
+  // Blend scalar properties (pairwise cosine)
   const blendedScalars = {};
   for (const prop of BLENDABLE_SCALARS) {
     blendedScalars[prop] = wLeft * leftProfile[prop] + wRight * rightProfile[prop];
   }
 
-  // Dominant branch = whichever has higher weight
   const dominantIdx = wLeft >= wRight ? leftIdx : rightIdx;
   const dominant = BRANCH_PROFILES[dominantIdx];
 
-  // Build influence array (at most 2 non-zero)
   const influences = new Array(12).fill(0);
   influences[leftIdx] = wLeft;
-  influences[rightIdx] += wRight;  // += handles leftIdx === rightIdx (t=0)
-  const totalInfluence = wLeft + wRight;  // always 1.0
+  influences[rightIdx] += wRight;
 
   return {
     angle: theta,
@@ -282,15 +272,13 @@ export function getBlendedBranchProfile(angle) {
     purity: blendedScalars.purity,
     stability: blendedScalars.stability,
     intensity: blendedScalars.intensity,
-    // Discrete properties come from the dominant branch
     role: dominant.role,
     season: dominant.season,
     samhapGroup: dominant.samhapGroup,
     samhapPosition: dominant.samhapPosition,
     banghapGroup: dominant.banghapGroup,
     hiddenStems: dominant.hiddenStems,
-    // Raw influence data for advanced use
     influences,
-    totalInfluence,
+    totalInfluence: 1.0,
   };
 }
