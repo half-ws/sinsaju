@@ -1,6 +1,6 @@
 import { CircularChart } from './circular-chart.js';
 import { svgEl, arcPath, pointOnCircle } from './svg-utils.js';
-import { ohengColor, branchToElement } from './color-scales.js';
+import { ohengColor, branchToElement, RELATION_COLORS } from './color-scales.js';
 
 const JIJI_HANJA = ['子','丑','寅','卯','辰','巳','午','未','申','酉','戌','亥'];
 
@@ -35,9 +35,10 @@ export class FortuneOverlayChart extends CircularChart {
     super(container, options);
   }
 
-  render(chartData, fortuneData, targetYear = null) {
+  render(chartData, fortuneData, targetYear = null, interactions = null) {
     this._fortuneData = fortuneData || null;
     this._targetYear = targetYear;
+    this._interactions = interactions || null;
 
     if (!fortuneData) {
       super.render(chartData);
@@ -85,7 +86,8 @@ export class FortuneOverlayChart extends CircularChart {
     const birthYear = fortuneData.birthYear;
     const currentAge = birthYear != null ? currentYear - birthYear : null;
 
-    // 1. Fortune outer rings
+    // 1. Fortune outer rings (also stores current fortune angles)
+    this._currentFortuneAngles = {};
     this._drawFortuneRing(daeunRing, fortuneData.daeun, 'daeun', currentAge, currentYear);
     this._drawFortuneRing(saeunRing, fortuneData.saeun, 'saeun', currentAge, currentYear);
 
@@ -105,9 +107,14 @@ export class FortuneOverlayChart extends CircularChart {
     // 5. Center
     this._drawCenter(centerR);
 
-    // 6. Relations
+    // 6. Natal internal relations
     if (this.showRelations && chartData.discrete) {
       this._drawRelations(chartData, natalRings);
+    }
+
+    // 7. Fortune ↔ Natal relations
+    if (this._interactions && this._interactions.length > 0) {
+      this._drawFortuneRelations(chartData, natalRings, daeunRing, saeunRing);
     }
 
     this.container.appendChild(this.svg);
@@ -231,6 +238,9 @@ export class FortuneOverlayChart extends CircularChart {
       }
 
       points.push({ branchIdx, angle, startAge, year, isCurrent, idx60 });
+      if (isCurrent && this._currentFortuneAngles) {
+        this._currentFortuneAngles[type] = { angle, branchIdx, idx60 };
+      }
     }
 
     // Highlight sectors — 현재 항목만 강조, 나머지는 지지 중심으로 얇게 표시
@@ -292,6 +302,82 @@ export class FortuneOverlayChart extends CircularChart {
           stroke: '#fff', 'stroke-width': 0.3,
         }));
       }
+    }
+
+    this.svg.appendChild(g);
+  }
+
+  /**
+   * Draw relation lines between fortune rings and natal rings.
+   * Uses interactions data from fortune-scorer.
+   */
+  _drawFortuneRelations(chartData, natalRings, daeunRing, saeunRing) {
+    const interactions = this._interactions;
+    if (!interactions || interactions.length === 0) return;
+
+    const pillarKeys = ['year', 'month', 'day', 'hour'];
+    const ringMap = { daeun: daeunRing, saeun: saeunRing };
+    const natalRingMap = {};
+    pillarKeys.forEach((k, i) => { natalRingMap[k] = natalRings[i]; });
+
+    // fortune→natal interactions만 필터 (원국 내부는 _drawRelations에서 처리)
+    const fortuneInteractions = interactions.filter(ix =>
+      (ix.source === 'daeun' || ix.source === 'saeun') &&
+      pillarKeys.includes(ix.target)
+    );
+    if (fortuneInteractions.length === 0) return;
+
+    // 합충 상쇄 위치 집계 (반투명 처리용)
+    const conflicted = new Set();
+    for (const ix of interactions) {
+      if (ix.type === '합충상쇄') {
+        conflicted.add(ix.source);
+      }
+    }
+
+    const g = svgEl('g', { class: 'fortune-relations' });
+
+    for (const ix of fortuneInteractions) {
+      const fortuneType = ix.source; // 'daeun' or 'saeun'
+      const natalKey = ix.target;    // 'year'/'month'/'day'/'hour'
+
+      const fortuneAngleData = this._currentFortuneAngles?.[fortuneType];
+      if (!fortuneAngleData) continue;
+
+      const fortuneRing = ringMap[fortuneType];
+      const natalRing = natalRingMap[natalKey];
+      if (!fortuneRing || !natalRing) continue;
+
+      const sourceAngle = fortuneAngleData.angle;
+      const targetAngle = chartData.continuous?.[natalKey]?.angle
+        ?? (chartData.discrete?.idxs?.[natalKey] % 12) * 30;
+
+      const sourceMidR = (fortuneRing.inner + fortuneRing.r) / 2;
+      const targetMidR = (natalRing.inner + natalRing.r) / 2;
+
+      const p1 = pointOnCircle(this.cx, this.cy, sourceMidR, sourceAngle);
+      const p2 = pointOnCircle(this.cx, this.cy, targetMidR, targetAngle);
+
+      const isCombine = ix.type.includes('합');
+      const isClash = ix.type.includes('충');
+
+      // 상쇄 여부 — 관련 위치에 합+충 동시 → 반투명
+      const isConflicted = conflicted.has(natalKey) || conflicted.has(fortuneType);
+      const opacity = isConflicted ? '0.35' : '0.7';
+
+      const color = isCombine
+        ? (RELATION_COLORS.combine || '#4CAF50')
+        : (RELATION_COLORS.clash || '#F44336');
+
+      const strokeWidth = this.size <= 360 ? 1.5 : 2;
+
+      g.appendChild(svgEl('line', {
+        x1: p1.x, y1: p1.y, x2: p2.x, y2: p2.y,
+        stroke: color,
+        'stroke-width': strokeWidth,
+        'stroke-dasharray': isClash ? '5,3' : (isConflicted ? '3,3' : 'none'),
+        opacity,
+      }));
     }
 
     this.svg.appendChild(g);

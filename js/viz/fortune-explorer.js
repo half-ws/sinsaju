@@ -404,6 +404,9 @@ export class FortuneExplorer {
     }
 
     const badges = interactions.map(i => {
+      if (i.type === '합충상쇄') {
+        return `<span class="fe-badge conflict">${i.desc} (${i.source})</span>`;
+      }
       const isClash = i.type.includes('충');
       const cls = isClash ? 'fe-badge clash' : 'fe-badge combine';
       return `<span class="${cls}">${i.desc} (${i.source}↔${i.target})</span>`;

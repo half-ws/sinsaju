@@ -184,7 +184,7 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}, nata
         }
       } else if (rel.type === '충') {
         const elA = sd[p1].el, elB = sd[p2].el;
-        clashEvents.push({ elA, elB, weight: 1.0 });
+        clashEvents.push({ elA, elB, weight: 1.0, posA: p1, posB: p2 });
         interactions.push({ type: '천간충', source: p1, target: p2, desc: '충' });
       }
     }
@@ -206,7 +206,7 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}, nata
         }
       } else if (rel.type === '충') {
         const elA = JIJI_OHENG[bd[p1].bi], elB = JIJI_OHENG[bd[p2].bi];
-        clashEvents.push({ elA, elB, weight: 1.0 });
+        clashEvents.push({ elA, elB, weight: 1.0, posA: p1, posB: p2 });
         interactions.push({ type: '지지충', source: p1, target: p2, desc: '충' });
       }
     }
@@ -237,7 +237,7 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}, nata
             }
           } else if (rel.type === '충') {
             const elA = sd[fp].el, elB = sd[np].el;
-            clashEvents.push({ elA, elB, weight: iw * FORTUNE_DAMPEN });
+            clashEvents.push({ elA, elB, weight: iw * FORTUNE_DAMPEN, posA: fp, posB: np });
             interactions.push({ type: '천간충', source: fp, target: np, desc: '충' });
           }
         }
@@ -259,7 +259,7 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}, nata
             }
           } else if (rel.type === '충') {
             const elA = JIJI_OHENG[bd[fp].bi], elB = JIJI_OHENG[bd[np].bi];
-            clashEvents.push({ elA, elB, weight: iw * FORTUNE_DAMPEN });
+            clashEvents.push({ elA, elB, weight: iw * FORTUNE_DAMPEN, posA: fp, posB: np });
             interactions.push({ type: '지지충', source: fp, target: np, desc: '충' });
           }
         }
@@ -274,6 +274,41 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}, nata
 
   // 2-3. 삼합 검출
   _applyTripleCombine(bd, allPositions, interactions, fortunePositions);
+
+  // ── Step 2.5: 합충 상쇄 ──
+  // 같은 위치에 합과 충이 동시에 걸리면 두 힘 모두 약화
+  const CONFLICT_DAMPEN = 0.5;
+  const posEvents = {};
+  for (const ix of interactions) {
+    const isCombine = ix.type.includes('합');
+    const isClash = ix.type.includes('충');
+    if (!isCombine && !isClash) continue;
+    for (const pos of [ix.source, ix.target]) {
+      if (!posEvents[pos]) posEvents[pos] = { combines: 0, clashes: 0 };
+      if (isCombine) posEvents[pos].combines++;
+      if (isClash) posEvents[pos].clashes++;
+    }
+  }
+
+  for (const [pos, ev] of Object.entries(posEvents)) {
+    if (ev.combines === 0 || ev.clashes === 0) continue;
+    // 합의 변환력 감쇄
+    if (sd[pos]) {
+      for (const t of sd[pos].tr) t.f *= CONFLICT_DAMPEN;
+      sd[pos].of = 1 - (1 - sd[pos].of) * CONFLICT_DAMPEN;
+    }
+    if (bd[pos]) {
+      for (const t of bd[pos].tr) t.f *= CONFLICT_DAMPEN;
+      bd[pos].of = 1 - (1 - bd[pos].of) * CONFLICT_DAMPEN;
+    }
+    interactions.push({ type: '합충상쇄', source: pos, target: pos, desc: '합·충 상쇄' });
+  }
+
+  // 충 교란도 상쇄 위치에서 감쇄
+  for (const clash of clashEvents) {
+    if (clash.posA && posEvents[clash.posA]?.combines > 0) clash.weight *= CONFLICT_DAMPEN;
+    if (clash.posB && posEvents[clash.posB]?.combines > 0) clash.weight *= CONFLICT_DAMPEN;
+  }
 
   // ── Step 3: 가중 오행 합산 ──
   const oh = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };

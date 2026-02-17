@@ -209,12 +209,15 @@ export class SingleChart {
           saeun: Array.isArray(feSaeun) ? feSaeun : (feSaeun?.list || []),
           birthYear: bm.year,
         };
-        this._feFortuneOverlayChart.render(chartData, feFortuneData);
+        // 초기 렌더링: 현재 연도의 interactions 포함
+        const initYear = new Date().getFullYear();
+        const initEntry = tsData.yearly?.find(e => e.year === initYear);
+        this._feFortuneOverlayChart.render(chartData, feFortuneData, null, initEntry?.interactions);
 
-        // 슬라이더 변경 시 원형 차트 대운/세운 위치 갱신
+        // 슬라이더 변경 시 원형 차트 대운/세운 위치 + 합충 관계선 갱신
         this.fortuneExplorer.onSliderChange((entry) => {
           if (this._feFortuneOverlayChart && entry.year) {
-            this._feFortuneOverlayChart.render(chartData, feFortuneData, entry.year);
+            this._feFortuneOverlayChart.render(chartData, feFortuneData, entry.year, entry.interactions);
           }
         });
       } catch (e) {
