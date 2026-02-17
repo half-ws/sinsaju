@@ -1316,6 +1316,184 @@ body {
   line-height: 1.4;
 }
 
+/* ----- Fortune Explorer ----- */
+.fe-slider-area { margin-bottom: 20px; }
+
+.fe-header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.fe-year-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.fe-pillar-label {
+  font-size: 0.85rem;
+  color: var(--text-dim);
+  font-family: var(--font-serif);
+}
+
+.fe-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--bg-input, #e5e5ea);
+  outline: none;
+  margin: 12px 0 0;
+  cursor: pointer;
+}
+
+.fe-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  cursor: grab;
+  border: 2px solid #fff;
+}
+
+.fe-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
+  cursor: grab;
+  border: 2px solid #fff;
+}
+
+.fe-slider:active::-webkit-slider-thumb { cursor: grabbing; }
+.fe-slider:active::-moz-range-thumb { cursor: grabbing; }
+
+.fe-compare {
+  display: flex;
+  gap: 28px;
+}
+
+.fe-col {
+  flex: 1;
+  min-width: 0;
+}
+
+.fe-col-title {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin: 0 0 12px;
+  letter-spacing: 0.03em;
+}
+
+.fe-section-label {
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: var(--text-dim);
+  margin-bottom: 6px;
+  letter-spacing: 0.04em;
+}
+
+.fe-bars .osp-bar-fill {
+  transition: width 0.15s ease;
+}
+
+.fe-delta {
+  font-size: 0.75rem;
+  font-weight: 600;
+  width: 42px;
+  text-align: right;
+  flex-shrink: 0;
+}
+
+.fe-delta.pos { color: #248A3D; }
+.fe-delta.neg { color: #FF3B30; }
+
+.fe-chart-area {
+  margin-top: 16px;
+  display: flex;
+  justify-content: center;
+}
+
+.fe-chart-area svg {
+  max-width: 100%;
+  height: auto;
+}
+
+.fe-interactions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 16px;
+  min-height: 0;
+}
+
+.fe-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+}
+
+.fe-badge.combine {
+  background: rgba(52, 199, 89, 0.12);
+  color: #248A3D;
+  border: 1px solid rgba(52, 199, 89, 0.25);
+}
+
+.fe-badge.clash {
+  background: rgba(255, 59, 48, 0.1);
+  color: #D70015;
+  border: 1px solid rgba(255, 59, 48, 0.2);
+}
+
+@media (max-width: 768px) {
+  .fe-compare {
+    flex-direction: column;
+    gap: 20px;
+  }
+}
+
+/* Dark mode */
+@media (prefers-color-scheme: dark) {
+  .fe-slider { background: var(--bg-input, #2c2c2e); }
+  .fe-slider::-webkit-slider-thumb { border-color: #1c1c1e; }
+  .fe-slider::-moz-range-thumb { border-color: #1c1c1e; }
+  .fe-delta.pos { color: #34C759; }
+  .fe-delta.neg { color: #FF453A; }
+  .fe-badge.combine {
+    background: rgba(52, 199, 89, 0.15);
+    color: #34C759;
+  }
+  .fe-badge.clash {
+    background: rgba(255, 69, 58, 0.15);
+    color: #FF453A;
+  }
+}
+[data-theme="dark"] .fe-slider { background: var(--bg-input, #2c2c2e); }
+[data-theme="dark"] .fe-slider::-webkit-slider-thumb { border-color: #1c1c1e; }
+[data-theme="dark"] .fe-slider::-moz-range-thumb { border-color: #1c1c1e; }
+[data-theme="dark"] .fe-delta.pos { color: #34C759; }
+[data-theme="dark"] .fe-delta.neg { color: #FF453A; }
+[data-theme="dark"] .fe-badge.combine {
+  background: rgba(52, 199, 89, 0.15);
+  color: #34C759;
+}
+[data-theme="dark"] .fe-badge.clash {
+  background: rgba(255, 69, 58, 0.15);
+  color: #FF453A;
+}
+
 /* ----- Fortune Timeseries Controls ----- */
 .fortune-ts-controls {
   display: flex;

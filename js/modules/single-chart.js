@@ -12,6 +12,7 @@ import { FortuneOverlayChart } from '../viz/fortune-overlay-chart.js';
 import { FortuneModule } from './fortune-module.js';
 import { OhengSipsungPanel } from '../viz/oheng-sipsung-panel.js';
 import { FortuneTimeSeriesChart } from '../viz/fortune-timeseries-chart.js';
+import { FortuneExplorer } from '../viz/fortune-explorer.js';
 import { generateOhengWaves, generateToWave, generateCheonganWaves } from '../core/oheng-waves.js';
 import { computeProfile } from '../core/fortune-scorer.js';
 import { generateFortuneTimeSeries, generateMonthlyDetail, monthlyToChartData, computeDaeunAngle } from '../core/fortune-timeseries.js';
@@ -31,6 +32,9 @@ export class SingleChart {
     this.fortuneTimeSeriesChart = new FortuneTimeSeriesChart('fortune-timeseries-chart', { width: 900, height: 400 });
     this.decadeChart = new FortuneTimeSeriesChart('fortune-decade-chart', { width: 900, height: 380 });
     this.yearChart = new FortuneTimeSeriesChart('fortune-year-chart', { width: 900, height: 380 });
+    this.fortuneExplorer = new FortuneExplorer('fortune-explorer');
+    this._feCircularChart = null;
+    this._feFortuneOverlayChart = null;
 
     this._birthMoment = null;
     this._chartData = null;
@@ -213,6 +217,31 @@ export class SingleChart {
       // 대운 10년 + 연간 12개월 차트
       this._renderDecadeChart();
       this._renderYearChart();
+
+      // 운세 탐색기
+      try {
+        const natalProfile = computeProfile(chartData.discrete, hasTime, {}, natalAngles);
+        this.fortuneExplorer.render(tsData, natalProfile);
+        document.getElementById('fortune-explorer-wrapper').style.display = '';
+
+        // 축소 원형 차트 (1회 생성)
+        if (!this._feCircularChart) {
+          this._feCircularChart = new CircularChart('fe-circular-chart', { size: 320 });
+          this._feFortuneOverlayChart = new FortuneOverlayChart('fe-fortune-overlay-chart', { size: 320 });
+        }
+        this._feCircularChart.render(chartData);
+
+        const feCurYear = new Date().getFullYear();
+        const feSaeun = bm.computeSaeun(Math.max(bm.year, feCurYear - 5), feCurYear + 20);
+        const feFortuneData = {
+          daeun: Array.isArray(chartData.daeun) ? chartData.daeun : (chartData.daeun?.list || []),
+          saeun: Array.isArray(feSaeun) ? feSaeun : (feSaeun?.list || []),
+          birthYear: bm.year,
+        };
+        this._feFortuneOverlayChart.render(chartData, feFortuneData);
+      } catch (e) {
+        console.warn('Fortune explorer rendering failed:', e);
+      }
     } catch (e) {
       console.warn('Fortune timeseries rendering failed:', e);
     }
