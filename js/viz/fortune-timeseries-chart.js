@@ -13,15 +13,30 @@ import { setupCanvas, drawSmoothLine, drawDashedLine } from './canvas-utils.js';
 import { OHENG_COLORS } from './color-scales.js';
 
 const OHENG_KEYS = ['목', '화', '토', '금', '수'];
+
+// 십성: 편(실선) / 정(점선) 쌍으로 정렬
 const SIPSUNG_KEYS = ['비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인'];
 
-const SIPSUNG_COLORS = {
-  비견: '#6366F1', 겁재: '#A78BFA',
-  식신: '#EC4899', 상관: '#F9A8D4',
-  편재: '#F59E0B', 정재: '#FBBF24',
-  편관: '#10B981', 정관: '#6EE7B7',
-  편인: '#3B82F6', 정인: '#93C5FD',
+// 그룹당 하나의 색상, 편/정 모두 동일 색
+const SIPSUNG_GROUP_COLOR = {
+  비겁: '#6366F1',  // 보라
+  식상: '#EC4899',  // 핑크
+  재성: '#F59E0B',  // 황색
+  관성: '#10B981',  // 녹색
+  인성: '#3B82F6',  // 파랑
 };
+
+// 각 십성 → 그룹 색상 매핑
+const SIPSUNG_COLORS = {
+  비견: SIPSUNG_GROUP_COLOR.비겁, 겁재: SIPSUNG_GROUP_COLOR.비겁,
+  식신: SIPSUNG_GROUP_COLOR.식상, 상관: SIPSUNG_GROUP_COLOR.식상,
+  편재: SIPSUNG_GROUP_COLOR.재성, 정재: SIPSUNG_GROUP_COLOR.재성,
+  편관: SIPSUNG_GROUP_COLOR.관성, 정관: SIPSUNG_GROUP_COLOR.관성,
+  편인: SIPSUNG_GROUP_COLOR.인성, 정인: SIPSUNG_GROUP_COLOR.인성,
+};
+
+// 정(正) 십성 = 점선
+const JEONG_SET = new Set(['겁재', '상관', '정재', '정관', '정인']);
 
 export class FortuneTimeSeriesChart {
   constructor(containerId, options = {}) {
@@ -146,7 +161,7 @@ export class FortuneTimeSeriesChart {
       drawDashedLine(ctx, cx, top, top + h, '#D4A800', [3, 2]);
     }
 
-    // ── 5. 원국 기준선 (점선) ──
+    // ── 5. 원국 기준선 (연한 수평선) ──
     for (let ki = 0; ki < keys.length; ki++) {
       const key = keys[ki];
       const natalVal = isOheng
@@ -156,8 +171,8 @@ export class FortuneTimeSeriesChart {
 
       ctx.strokeStyle = colors[ki];
       ctx.lineWidth = 1;
-      ctx.globalAlpha = 0.35;
-      ctx.setLineDash([6, 4]);
+      ctx.globalAlpha = 0.25;
+      ctx.setLineDash([4, 6]);
       ctx.beginPath();
       ctx.moveTo(left, y);
       ctx.lineTo(left + w, y);
@@ -175,7 +190,8 @@ export class FortuneTimeSeriesChart {
           : (d.sipsung.percent[key] || 0);
         return { x: toX(d.year), y: toY(val) };
       });
-      drawSmoothLine(ctx, points, colors[ki], 2);
+      const dash = (!isOheng && JEONG_SET.has(key)) ? [6, 4] : null;
+      drawSmoothLine(ctx, points, colors[ki], 2, dash);
     }
 
     // ── 7. 합충 마커 ──
@@ -231,21 +247,39 @@ export class FortuneTimeSeriesChart {
           ctx.fillText(headerText, hx + 10, tooltipY);
           tooltipY += 26;
 
-          for (let ki = 0; ki < keys.length; ki++) {
-            const key = keys[ki];
-            const val = isOheng
-              ? (entry.oheng.percent[key] || 0)
-              : (entry.sipsung.percent[key] || 0);
-            const natalBase = isOheng
-              ? (natal.oheng.percent[key] || 0)
-              : (natal.sipsung.percent[key] || 0);
-            const delta = Math.round((val - natalBase) * 10) / 10;
-            const sign = delta >= 0 ? '+' : '';
-
-            ctx.fillStyle = colors[ki];
-            ctx.font = 'bold 20px "Noto Sans KR", sans-serif';
-            ctx.fillText(`${key} ${val.toFixed(1)}% (${sign}${delta.toFixed(1)})`, hx + 10, tooltipY);
-            tooltipY += 22;
+          if (isOheng) {
+            for (let ki = 0; ki < keys.length; ki++) {
+              const key = keys[ki];
+              const val = entry.oheng.percent[key] || 0;
+              const natalBase = natal.oheng.percent[key] || 0;
+              const delta = Math.round((val - natalBase) * 10) / 10;
+              const sign = delta >= 0 ? '+' : '';
+              ctx.fillStyle = colors[ki];
+              ctx.font = 'bold 20px "Noto Sans KR", sans-serif';
+              ctx.fillText(`${key} ${val.toFixed(1)}% (${sign}${delta.toFixed(1)})`, hx + 10, tooltipY);
+              tooltipY += 22;
+            }
+          } else {
+            // 십성: 그룹별 편/정 나란히
+            const pairs = [
+              ['비견', '겁재'], ['식신', '상관'], ['편재', '정재'],
+              ['편관', '정관'], ['편인', '정인'],
+            ];
+            for (const [pyeon, jeong] of pairs) {
+              const c = SIPSUNG_COLORS[pyeon];
+              const pVal = entry.sipsung.percent[pyeon] || 0;
+              const jVal = entry.sipsung.percent[jeong] || 0;
+              const pBase = natal.sipsung.percent[pyeon] || 0;
+              const jBase = natal.sipsung.percent[jeong] || 0;
+              const pD = Math.round((pVal - pBase) * 10) / 10;
+              const jD = Math.round((jVal - jBase) * 10) / 10;
+              const pSign = pD >= 0 ? '+' : '';
+              const jSign = jD >= 0 ? '+' : '';
+              ctx.fillStyle = c;
+              ctx.font = 'bold 19px "Noto Sans KR", sans-serif';
+              ctx.fillText(`${pyeon} ${pVal.toFixed(1)}%(${pSign}${pD.toFixed(1)})  ${jeong} ${jVal.toFixed(1)}%(${jSign}${jD.toFixed(1)})`, hx + 10, tooltipY);
+              tooltipY += 22;
+            }
           }
 
           // 합충 이벤트
@@ -294,31 +328,65 @@ export class FortuneTimeSeriesChart {
     }
 
     // ── 11. 범례 ──
-    const legendY = isOheng ? 16 : 10;
+    const legendY = 16;
     ctx.textAlign = 'left';
-    let legendX = left;
-    let legendRow = 0;
-    const legendSpacing = isOheng ? 64 : 76;
-    const legendPerRow = isOheng ? 5 : 5;
-    for (let ki = 0; ki < keys.length; ki++) {
-      if (!isOheng && ki > 0 && ki % legendPerRow === 0) {
-        legendRow++;
-        legendX = left;
+
+    if (isOheng) {
+      let legendX = left;
+      for (let ki = 0; ki < keys.length; ki++) {
+        ctx.fillStyle = colors[ki];
+        ctx.fillRect(legendX, legendY, 16, 16);
+        ctx.font = 'bold 22px "Noto Sans KR", sans-serif';
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillText(keys[ki], legendX + 20, legendY + 14);
+        legendX += 64;
       }
-      const ly = legendY + legendRow * 24;
-      ctx.fillStyle = colors[ki];
-      ctx.fillRect(legendX, ly, 14, 14);
-      ctx.font = 'bold 20px "Noto Sans KR", sans-serif';
-      ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillText(keys[ki], legendX + 18, ly + 12);
-      legendX += legendSpacing;
+    } else {
+      // 십성: 5그룹, 각 그룹에 실선(편) / 점선(정) 표시
+      const groups = [
+        { label: '비겁', items: ['비견', '겁재'] },
+        { label: '식상', items: ['식신', '상관'] },
+        { label: '재성', items: ['편재', '정재'] },
+        { label: '관성', items: ['편관', '정관'] },
+        { label: '인성', items: ['편인', '정인'] },
+      ];
+      let legendX = left;
+      const ly = legendY;
+      for (const g of groups) {
+        const c = SIPSUNG_GROUP_COLOR[g.label];
+        // 실선 샘플 (편)
+        ctx.strokeStyle = c;
+        ctx.lineWidth = 2.5;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(legendX, ly + 7);
+        ctx.lineTo(legendX + 18, ly + 7);
+        ctx.stroke();
+        // 점선 샘플 (정)
+        ctx.setLineDash([4, 3]);
+        ctx.beginPath();
+        ctx.moveTo(legendX, ly + 22);
+        ctx.lineTo(legendX + 18, ly + 22);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        // 라벨
+        ctx.font = 'bold 18px "Noto Sans KR", sans-serif';
+        ctx.fillStyle = 'rgba(0,0,0,0.65)';
+        ctx.fillText(g.items[0], legendX + 22, ly + 12);   // 편
+        ctx.fillText(g.items[1], legendX + 22, ly + 27);    // 정
+        legendX += 82;
+      }
+      // 범례 하단에 편=실선, 정=점선 안내
+      ctx.fillStyle = 'rgba(0,0,0,0.35)';
+      ctx.font = '16px "Noto Sans KR", sans-serif';
+      ctx.fillText('── 편  ┄┄ 정', legendX + 4, ly + 20);
     }
 
     // 모드 표시
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = '20px "Noto Sans KR", sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(isOheng ? '오행 변화' : '십성 변화', this.width - right, legendY + 12);
+    ctx.fillText(isOheng ? '오행 변화' : '십성 변화', this.width - right, legendY + 14);
   }
 
   _setupInteraction() {

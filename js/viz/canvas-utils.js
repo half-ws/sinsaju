@@ -11,12 +11,13 @@ export function setupCanvas(canvas, width, height) {
 }
 
 /** Draw smooth curve through points */
-export function drawSmoothLine(ctx, points, color, lineWidth = 2) {
+export function drawSmoothLine(ctx, points, color, lineWidth = 2, dash = null) {
   if (points.length < 2) return;
   ctx.beginPath();
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
   ctx.lineJoin = 'round';
+  if (dash) ctx.setLineDash(dash);
   ctx.moveTo(points[0].x, points[0].y);
 
   for (let i = 1; i < points.length - 1; i++) {
@@ -28,6 +29,7 @@ export function drawSmoothLine(ctx, points, color, lineWidth = 2) {
   const last = points[points.length - 1];
   ctx.lineTo(last.x, last.y);
   ctx.stroke();
+  if (dash) ctx.setLineDash([]);
 }
 
 /** Draw dashed vertical line */
