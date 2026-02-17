@@ -180,10 +180,7 @@ export class SingleChart {
     const toStrengths = generateToWave(360);
     this.waveformChart.render(waveData, birthAngles, toStrengths);
 
-    // 5. Fortune timeline
-    this._renderFortune(bm, chartData);
-
-    // 6. 오행/십성 프로필
+    // 5. 오행/십성 프로필
     try {
       const natalProfile = computeProfile(chartData.discrete, hasTime, {}, natalAngles);
       this.ohengSipsungPanel.render(natalProfile, chartData.yongsin);
