@@ -13,14 +13,14 @@ import { setupCanvas, drawSmoothLine, drawDashedLine } from './canvas-utils.js';
 import { OHENG_COLORS } from './color-scales.js';
 
 const OHENG_KEYS = ['목', '화', '토', '금', '수'];
-const SIPSUNG_GROUP_KEYS = ['비겁', '식상', '재성', '관성', '인성'];
+const SIPSUNG_KEYS = ['비견', '겁재', '식신', '상관', '편재', '정재', '편관', '정관', '편인', '정인'];
 
 const SIPSUNG_COLORS = {
-  비겁: '#6366F1',
-  식상: '#EC4899',
-  재성: '#F59E0B',
-  관성: '#10B981',
-  인성: '#3B82F6',
+  비견: '#6366F1', 겁재: '#A78BFA',
+  식신: '#EC4899', 상관: '#F9A8D4',
+  편재: '#F59E0B', 정재: '#FBBF24',
+  편관: '#10B981', 정관: '#6EE7B7',
+  편인: '#3B82F6', 정인: '#93C5FD',
 };
 
 export class FortuneTimeSeriesChart {
@@ -82,9 +82,9 @@ export class FortuneTimeSeriesChart {
     const natal = data.natal;
     const boundaries = data.daeunBoundaries || [];
     const isOheng = mode === 'oheng';
-    const keys = isOheng ? OHENG_KEYS : SIPSUNG_GROUP_KEYS;
-    const colors = isOheng ? OHENG_KEYS.map(k => OHENG_COLORS[k]?.main || '#888') : SIPSUNG_GROUP_KEYS.map(k => SIPSUNG_COLORS[k]);
-    const maxY = isOheng ? 50 : 45;
+    const keys = isOheng ? OHENG_KEYS : SIPSUNG_KEYS;
+    const colors = isOheng ? OHENG_KEYS.map(k => OHENG_COLORS[k]?.main || '#888') : SIPSUNG_KEYS.map(k => SIPSUNG_COLORS[k]);
+    const maxY = isOheng ? 50 : 30;
     const currentYear = new Date().getFullYear();
     const currentMonth = new Date().getMonth() + 1;
     const isMonthly = !!data._isMonthly;
@@ -151,7 +151,7 @@ export class FortuneTimeSeriesChart {
       const key = keys[ki];
       const natalVal = isOheng
         ? (natal.oheng.percent[key] || 0)
-        : (natal.sipsung.grouped[key] || 0);
+        : (natal.sipsung.percent[key] || 0);
       const y = toY(natalVal);
 
       ctx.strokeStyle = colors[ki];
@@ -172,7 +172,7 @@ export class FortuneTimeSeriesChart {
       const points = yearly.map(d => {
         const val = isOheng
           ? (d.oheng.percent[key] || 0)
-          : (d.sipsung.grouped[key] || 0);
+          : (d.sipsung.percent[key] || 0);
         return { x: toX(d.year), y: toY(val) };
       });
       drawSmoothLine(ctx, points, colors[ki], 2);
@@ -235,10 +235,11 @@ export class FortuneTimeSeriesChart {
             const key = keys[ki];
             const val = isOheng
               ? (entry.oheng.percent[key] || 0)
-              : (entry.sipsung.grouped[key] || 0);
-            const delta = isOheng
-              ? (entry.delta.oheng[key] || 0)
-              : (entry.delta.sipsung[key] || 0);
+              : (entry.sipsung.percent[key] || 0);
+            const natalBase = isOheng
+              ? (natal.oheng.percent[key] || 0)
+              : (natal.sipsung.percent[key] || 0);
+            const delta = Math.round((val - natalBase) * 10) / 10;
             const sign = delta >= 0 ? '+' : '';
 
             ctx.fillStyle = colors[ki];
@@ -293,23 +294,31 @@ export class FortuneTimeSeriesChart {
     }
 
     // ── 11. 범례 ──
-    const legendY = 16;
+    const legendY = isOheng ? 16 : 10;
     ctx.textAlign = 'left';
     let legendX = left;
+    let legendRow = 0;
+    const legendSpacing = isOheng ? 64 : 76;
+    const legendPerRow = isOheng ? 5 : 5;
     for (let ki = 0; ki < keys.length; ki++) {
+      if (!isOheng && ki > 0 && ki % legendPerRow === 0) {
+        legendRow++;
+        legendX = left;
+      }
+      const ly = legendY + legendRow * 24;
       ctx.fillStyle = colors[ki];
-      ctx.fillRect(legendX, legendY, 16, 16);
-      ctx.font = 'bold 22px "Noto Sans KR", sans-serif';
+      ctx.fillRect(legendX, ly, 14, 14);
+      ctx.font = 'bold 20px "Noto Sans KR", sans-serif';
       ctx.fillStyle = 'rgba(0,0,0,0.65)';
-      ctx.fillText(keys[ki], legendX + 20, legendY + 14);
-      legendX += isOheng ? 64 : 80;
+      ctx.fillText(keys[ki], legendX + 18, ly + 12);
+      legendX += legendSpacing;
     }
 
     // 모드 표시
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
     ctx.font = '20px "Noto Sans KR", sans-serif';
     ctx.textAlign = 'right';
-    ctx.fillText(isOheng ? '오행 변화' : '십성 변화', this.width - right, legendY + 14);
+    ctx.fillText(isOheng ? '오행 변화' : '십성 변화', this.width - right, legendY + 12);
   }
 
   _setupInteraction() {
