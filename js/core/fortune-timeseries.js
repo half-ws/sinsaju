@@ -10,6 +10,34 @@ import { computeProfile } from './fortune-scorer.js';
 import { REF_YEAR, REF_YEAR_IDX, YUKSHIP_GAPJA, OHENG } from '../lib/sajuwiki/constants.js';
 import { WolunCalculator } from '../lib/sajuwiki/calculator.js';
 
+// ═══════════════════════════════════════════════════
+// 대운 연속 각도 계산
+// ═══════════════════════════════════════════════════
+
+/**
+ * 대운 연속 각도를 계산한다.
+ *
+ * 10년 주기 내에서 해당 지지의 30° 호를 따라 선형 진행:
+ *   시작(0/10): 이전 지지 경계 → 중간(5/10): 지지 중심 → 끝(10/10): 다음 지지 경계
+ *
+ * 순행(forward): 각도 증가 방향으로 이동
+ * 역행(backward): 각도 감소 방향으로 이동
+ *
+ * @param {number} koreanAge - 현재 한국 나이
+ * @param {Object} activeDaeun - 활성 대운 { idx, age, ... }
+ * @param {boolean} forward - 순행(true) / 역행(false)
+ * @returns {number} 연속 각도 (0-360)
+ */
+export function computeDaeunAngle(koreanAge, activeDaeun, forward) {
+  const bi = activeDaeun.idx % 12;
+  const center = bi * 30;
+  const dAge = activeDaeun.age ?? activeDaeun.startAge ?? 1;
+  const fraction = Math.max(0, Math.min(1, (koreanAge - dAge) / 10));
+  const dir = forward ? 1 : -1;
+  const angle = center + (fraction - 0.5) * 30 * dir;
+  return ((angle % 360) + 360) % 360;
+}
+
 /**
  * 연도별 시계열 데이터를 생성한다.
  *
@@ -35,6 +63,7 @@ export function generateFortuneTimeSeries(
   // 대운 리스트 정리
   const daeunList = Array.isArray(daeunData) ? daeunData : (daeunData?.list || []);
   const daeunStartAge = daeunData?.startAge || (daeunList[0]?.age ?? 1);
+  const forward = daeunData?.forward ?? true;
 
   // 대운 경계 연도 목록
   const daeunBoundaries = daeunList.map(d => ({
@@ -63,10 +92,14 @@ export function generateFortuneTimeSeries(
 
     // 통합 프로필 계산
     const fortunePillars = {};
-    if (activeDaeun) fortunePillars.daeun = activeDaeun.idx;
+    const fortuneAngles = {};
+    if (activeDaeun) {
+      fortunePillars.daeun = activeDaeun.idx;
+      fortuneAngles.daeun = computeDaeunAngle(koreanAge, activeDaeun, forward);
+    }
     fortunePillars.saeun = saeunIdx;
 
-    const profile = computeProfile(natalDiscrete, hasTime, fortunePillars, natalAngles);
+    const profile = computeProfile(natalDiscrete, hasTime, fortunePillars, natalAngles, fortuneAngles);
 
     // 원국 대비 변화량
     const delta = { oheng: {}, sipsung: {} };
@@ -107,10 +140,12 @@ export function generateFortuneTimeSeries(
  * @param {number|null} daeunIdx - 활성 대운 idx60
  * @param {number} saeunIdx - 세운 idx60
  * @param {number} targetYear
+ * @param {Object|null} [natalAngles=null]
+ * @param {number|null} [daeunAngle=null] - 대운 연속 각도. null이면 지지 중심각 사용.
  * @returns {Array<{ monthNum, pillar, oheng, sipsung, interactions, delta }>}
  */
 export function generateMonthlyDetail(
-  natalDiscrete, hasTime, daeunIdx, saeunIdx, targetYear, natalAngles = null
+  natalDiscrete, hasTime, daeunIdx, saeunIdx, targetYear, natalAngles = null, daeunAngle = null
 ) {
   const natal = computeProfile(natalDiscrete, hasTime, {}, natalAngles);
   const wolunList = WolunCalculator.calculate(natalDiscrete, targetYear);
@@ -118,9 +153,13 @@ export function generateMonthlyDetail(
 
   for (const wol of wolunList) {
     const fortunePillars = { saeun: saeunIdx, wolun: wol.idx };
-    if (daeunIdx != null) fortunePillars.daeun = daeunIdx;
+    const fortuneAngles = {};
+    if (daeunIdx != null) {
+      fortunePillars.daeun = daeunIdx;
+      if (daeunAngle != null) fortuneAngles.daeun = daeunAngle;
+    }
 
-    const profile = computeProfile(natalDiscrete, hasTime, fortunePillars, natalAngles);
+    const profile = computeProfile(natalDiscrete, hasTime, fortunePillars, natalAngles, fortuneAngles);
 
     const delta = { oheng: {}, sipsung: {} };
     for (const e of OHENG) {

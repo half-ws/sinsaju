@@ -14,7 +14,7 @@ import { OhengSipsungPanel } from '../viz/oheng-sipsung-panel.js';
 import { FortuneTimeSeriesChart } from '../viz/fortune-timeseries-chart.js';
 import { generateOhengWaves, generateToWave, generateCheonganWaves } from '../core/oheng-waves.js';
 import { computeProfile } from '../core/fortune-scorer.js';
-import { generateFortuneTimeSeries, generateMonthlyDetail, monthlyToChartData } from '../core/fortune-timeseries.js';
+import { generateFortuneTimeSeries, generateMonthlyDetail, monthlyToChartData, computeDaeunAngle } from '../core/fortune-timeseries.js';
 import { REF_YEAR, REF_YEAR_IDX, YUKSHIP_GAPJA } from '../lib/sajuwiki/constants.js';
 import { applyLongitudeCorrection } from './longitude-correction.js';
 import { appState } from '../core/state.js';
@@ -283,9 +283,13 @@ export class SingleChart {
 
     try {
       const natal = this._fortuneTimeSeriesData?.natal;
+      const daeunForward = this._chartData?.daeun?.forward ?? true;
+      const daeunAngle = activeDaeun
+        ? computeDaeunAngle(koreanAge, activeDaeun, daeunForward)
+        : null;
       const monthlyData = generateMonthlyDetail(
         chartData.discrete, hasTime,
-        activeDaeun?.idx ?? null, saeunIdx, year, this._natalAngles
+        activeDaeun?.idx ?? null, saeunIdx, year, this._natalAngles, daeunAngle
       );
       const monthlyChartData = monthlyToChartData(monthlyData, natal || { oheng: { percent: {} }, sipsung: { grouped: {} } });
       this.yearChart.render(monthlyChartData, this._tsMode);

@@ -107,6 +107,7 @@ function _angleToDist(angle) {
  * @param {boolean} hasTime - 시간 정보 유무
  * @param {Object} [fortunePillars={}] - { daeun?: idx60, saeun?: idx60, wolun?: idx60 }
  * @param {Object|null} [natalAngles=null] - { year, month, day, hour } 각 기둥의 연속 각도. null이면 이산 방식 유지.
+ * @param {Object|null} [fortuneAngles=null] - { daeun?, saeun?, wolun? } 운세 기둥의 연속 각도. null이면 지지 중심각(bi*30) 사용.
  * @returns {Object} {
  *   oheng: { raw, percent },
  *   sipsung: { raw, percent, grouped },
@@ -114,7 +115,7 @@ function _angleToDist(angle) {
  *   total: number
  * }
  */
-export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}, natalAngles = null) {
+export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}, natalAngles = null, fortuneAngles = null) {
   const natalPositions = hasTime
     ? ['hour', 'day', 'month', 'year']
     : ['day', 'month', 'year'];
@@ -142,7 +143,9 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}, nata
     const si = idx60 % 10;
     const bi = idx60 % 12;
     sd[fp] = { si, el: CHEONGAN_OHENG[si], w: FORTUNE_STEM_W[fp], of: 1, tr: [] };
-    const fortuneAngle = bi * 30;  // 지지 중심각
+    const fortuneAngle = (fortuneAngles && fortuneAngles[fp] != null)
+      ? fortuneAngles[fp]
+      : bi * 30;  // 연속 각도가 없으면 지지 중심각
     bd[fp] = { bi, dist: _angleToDist(fortuneAngle), w: FORTUNE_BR_W[fp], of: 1, tr: [], yy: BONGI_EUMYANG[bi] };
     fortunePositions.push(fp);
   }
