@@ -11,45 +11,30 @@
  */
 
 import { ohengStrengthAtAngle } from './trig-engine.js';
-import { CHEONGAN_OHENG, STEM_W, BR_W } from '../lib/sajuwiki/constants.js';
-import { angleDiff, toRad } from '../utils/math.js';
+import { CHEONGAN_OHENG, STEM_W } from '../lib/sajuwiki/constants.js';
+import { angleDiff } from '../utils/math.js';
 
 /** Oheng keys in canonical order */
 const OHENG_KEYS = ['목', '화', '토', '금', '수'];
 
-/** Wave-only keys (토 excluded — rendered as background band) */
+/** Wave-only keys (토 excluded — rendered as separate sub-graph) */
 const WAVE_KEYS = ['수', '목', '화', '금'];
-
-/** Peak angles for the four seasonal elements (aligned to branch centers) */
-const ELEMENT_PEAKS = { 수: 0, 목: 90, 화: 180, 금: 270 };
 
 /** Peak angles for the 천간 (heavenly stem) elements — between each pair */
 const CHEONGAN_PEAKS = { 목: 18, 화: 90, 토: 162, 금: 234, 수: 306 };
 const CHEONGAN_HALF_WIDTH = 72; // 360° / 5 elements
 
 // ===================================================================
-// Wave Generation — Pure cos² trigonometric model
+// Wave Generation — Branch-profile pairwise interpolation model
 // ===================================================================
 
 /**
- * Pure cosine-squared element strength.
- * Differentiable everywhere (C¹ continuous at zero crossings).
+ * Generate full 360-degree oheng wave data from the calculation engine.
  *
- * f(θ) = cos²(θ - peak) when |θ - peak| < 90°, else 0.
- * At transition points: both value AND derivative are 0.
- *
- * Adjacent elements satisfy cos²(x) + sin²(x) = 1 in overlap zones,
- * guaranteeing the four elements partition the full circle smoothly.
- */
-function elementStrength(theta, peakAngle) {
-  const delta = angleDiff(theta, peakAngle);
-  if (Math.abs(delta) >= 90) return 0;
-  const c = Math.cos(toRad(delta));
-  return c * c;
-}
-
-/**
- * Generate full 360-degree oheng wave data using pure cos² trig.
+ * Uses ohengStrengthAtAngle() (pairwise adjacent cosine interpolation)
+ * so that the visualization exactly matches the calculation engine.
+ * At each branch center (i*30°), the values precisely recover the
+ * traditional 지장간 ratios.
  *
  * Only 4 elements (목/화/금/수) are generated as waves.
  * 토 is generated separately via generateToWave().
@@ -68,8 +53,9 @@ export function generateOhengWaves(resolution = 360) {
     const angle = i * step;
     angles[i] = angle;
 
+    const oheng = ohengStrengthAtAngle(angle);
     for (const key of WAVE_KEYS) {
-      waves[key][i] = elementStrength(angle, ELEMENT_PEAKS[key]);
+      waves[key][i] = oheng[key];
     }
   }
 
@@ -128,45 +114,22 @@ export function generateCheonganWaves(resolution = 360) {
 }
 
 /**
- * Generate 토 wave data with precise entry/exit points.
+ * Generate 토 wave data from the calculation engine.
  *
- * 토 enters at the 3/4 point (75%) of each 왕지 (자/묘/오/유) territory:
- *   7.5° (자 75%), 97.5° (묘 75%), 187.5° (오 75%), 277.5° (유 75%)
- * 토 reaches zero at the exact center of each 역마 (인/사/신/해):
- *   60° (인 center), 150° (사 center), 240° (신 center), 330° (해 center)
- *
- * Each bump spans 52.5° with cos² shape. Peak is at the midpoint:
- *   33.75° (축), 123.75° (진), 213.75° (미), 303.75° (술)
- * Maximum value is 0.7 (토 never reaches 1.0 as it's a transitional element).
+ * Uses ohengStrengthAtAngle() so that the 토 sub-graph exactly
+ * matches the calculation engine's five-element distribution.
+ * At storage branches (축/진/미/술), 토 reaches 0.6 (60%).
+ * At pure branches (자/묘/오/유), 토 is 0.
  *
  * @param {number} [resolution=360] - sample points
- * @returns {number[]} array of 토 strength values (0 to 0.7)
+ * @returns {number[]} array of 토 strength values (0 to 0.6)
  */
 export function generateToWave(resolution = 360) {
-  // Each bump: start at 왕지 75%, end at 역마 center — peak is at midpoint
-  const TO_BUMPS = [
-    { start: 7.5, peak: 33.75, end: 60 },      // 축 area
-    { start: 97.5, peak: 123.75, end: 150 },    // 진 area
-    { start: 187.5, peak: 213.75, end: 240 },   // 미 area
-    { start: 277.5, peak: 303.75, end: 330 },   // 술 area
-  ];
-  const HALF_WIDTH = 26.25;
-  const MAX_TO = 0.7;
-
   const step = 360 / resolution;
   const values = new Array(resolution);
 
   for (let i = 0; i < resolution; i++) {
-    const angle = i * step;
-    let val = 0;
-    for (const bump of TO_BUMPS) {
-      const delta = angleDiff(angle, bump.peak);
-      if (Math.abs(delta) <= HALF_WIDTH) {
-        const c = Math.cos(delta * Math.PI / (2 * HALF_WIDTH));
-        val = Math.max(val, MAX_TO * c * c);
-      }
-    }
-    values[i] = val;
+    values[i] = ohengStrengthAtAngle(i * step)['토'];
   }
 
   return values;

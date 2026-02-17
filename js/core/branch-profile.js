@@ -226,13 +226,12 @@ export function getAllBranchProfiles() {
 /**
  * Get a blended branch profile for any continuous angle on the circle.
  *
- * For each of the 12 branches, compute its cosine influence at the
- * given angle. Branches beyond 90 degrees away have zero influence.
- * Then blend all numeric properties (purity, stability, intensity)
- * and ohengRatio using weighted averages.
+ * Uses pairwise adjacent cosine interpolation: only the two nearest
+ * branches contribute. At branch centers (i*30°), the exact discrete
+ * profile is recovered — guaranteeing traditional 지장간 ratios.
  *
- * This allows smooth interpolation between discrete branch positions,
- * giving every birth moment a unique continuous fingerprint.
+ * Between centers, cosine easing provides C¹-smooth interpolation
+ * of all numeric properties (ohengRatio, purity, stability, intensity).
  *
  * @param {number} angle - continuous angle in degrees [0, 360)
  * @returns {Object} blended profile with interpolated numeric values
@@ -240,60 +239,39 @@ export function getAllBranchProfiles() {
 export function getBlendedBranchProfile(angle) {
   const theta = normalizeAngle(angle);
 
-  // Compute influence for each branch
-  const influences = new Array(12);
-  let totalInfluence = 0;
+  // Find adjacent branches and fractional position
+  const leftIdx = Math.floor(theta / 30) % 12;
+  const rightIdx = (leftIdx + 1) % 12;
+  const t = (theta - leftIdx * 30) / 30;  // [0, 1)
 
-  for (let i = 0; i < 12; i++) {
-    const delta = angleDiff(theta, BRANCH_PROFILES[i].angle);
-    if (Math.abs(delta) >= 90) {
-      influences[i] = 0;
-    } else {
-      influences[i] = Math.cos(toRad(delta));
-    }
-    totalInfluence += influences[i];
-  }
+  // Cosine easing weights: 0 at left center, 1 at right center
+  const wRight = 0.5 - 0.5 * Math.cos(t * Math.PI);
+  const wLeft = 1 - wRight;
 
-  // Guard against zero total (should not happen for valid angles)
-  if (totalInfluence === 0) {
-    // Fallback: return the nearest discrete profile
-    const nearest = Math.round(theta / 30) % 12;
-    return { ...BRANCH_PROFILES[nearest] };
-  }
+  const leftProfile = BRANCH_PROFILES[leftIdx];
+  const rightProfile = BRANCH_PROFILES[rightIdx];
 
   // Blend ohengRatio
   const blendedOheng = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
-  for (let i = 0; i < 12; i++) {
-    if (influences[i] === 0) continue;
-    const w = influences[i] / totalInfluence;
-    const ratio = BRANCH_PROFILES[i].ohengRatio;
-    for (const key of OHENG_KEYS) {
-      blendedOheng[key] += ratio[key] * w;
-    }
+  for (const key of OHENG_KEYS) {
+    blendedOheng[key] = wLeft * leftProfile.ohengRatio[key] + wRight * rightProfile.ohengRatio[key];
   }
 
   // Blend scalar properties
   const blendedScalars = {};
   for (const prop of BLENDABLE_SCALARS) {
-    let val = 0;
-    for (let i = 0; i < 12; i++) {
-      if (influences[i] === 0) continue;
-      val += BRANCH_PROFILES[i][prop] * (influences[i] / totalInfluence);
-    }
-    blendedScalars[prop] = val;
+    blendedScalars[prop] = wLeft * leftProfile[prop] + wRight * rightProfile[prop];
   }
 
-  // Find dominant branch (highest influence)
-  let dominantIdx = 0;
-  let maxInfluence = influences[0];
-  for (let i = 1; i < 12; i++) {
-    if (influences[i] > maxInfluence) {
-      maxInfluence = influences[i];
-      dominantIdx = i;
-    }
-  }
-
+  // Dominant branch = whichever has higher weight
+  const dominantIdx = wLeft >= wRight ? leftIdx : rightIdx;
   const dominant = BRANCH_PROFILES[dominantIdx];
+
+  // Build influence array (at most 2 non-zero)
+  const influences = new Array(12).fill(0);
+  influences[leftIdx] = wLeft;
+  influences[rightIdx] += wRight;  // += handles leftIdx === rightIdx (t=0)
+  const totalInfluence = wLeft + wRight;  // always 1.0
 
   return {
     angle: theta,

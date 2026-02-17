@@ -56,60 +56,89 @@ const OHENG_KEYS = ['목', '화', '토', '금', '수'];
 // ===================================================================
 
 /**
+ * Find the two adjacent branches for a given angle and the
+ * fractional position between them.
+ *
+ * Each branch occupies a 30-degree sector centered at (idx * 30).
+ * For any angle θ, this returns the left branch (whose center is
+ * at or just before θ) and the right branch (next one clockwise),
+ * plus the fraction t ∈ [0, 1) indicating position within the sector.
+ *
+ * At t=0: exactly at left branch center.
+ * At t=1: exactly at right branch center (returned as t≈1 from left sector).
+ *
+ * @param {number} theta - angle in degrees [0, 360)
+ * @returns {{ leftIdx: number, rightIdx: number, t: number }}
+ */
+function getAdjacentBranches(theta) {
+  const norm = normalizeAngle(theta);
+  const leftIdx = Math.floor(norm / 30) % 12;
+  const rightIdx = (leftIdx + 1) % 12;
+  const t = (norm - leftIdx * 30) / 30;  // [0, 1)
+  return { leftIdx, rightIdx, t };
+}
+
+/**
  * Compute the influence of a single branch at a given angle.
  *
- * Uses cosine falloff: peak influence (1.0) at the branch center,
- * tapering to 0 at 90 degrees away.
+ * Uses pairwise adjacent cosine interpolation: only the two nearest
+ * branches have non-zero influence at any angle. At branch centers,
+ * influence is exactly 1.0 for that branch and 0.0 for all others.
  *
- * Example values:
- *   center (0 deg offset)   -> 1.000
- *   boundary (15 deg)       -> 0.966
- *   adjacent center (30 deg)-> 0.866
- *   60 deg away             -> 0.500
- *   90 deg away             -> 0.000
+ * This guarantees that traditional 지장간 oheng ratios are exactly
+ * recovered at each branch center.
  *
  * @param {number} theta - current angle in degrees [0, 360)
  * @param {number} branchIdx - branch index (0-11)
  * @returns {number} influence value in [0, 1]
  */
 export function branchInfluence(theta, branchIdx) {
-  const peak = branchIdx * 30;
-  const delta = angleDiff(theta, peak);
-  if (Math.abs(delta) >= 90) return 0;
-  return Math.cos(toRad(delta));
+  const { leftIdx, rightIdx, t } = getAdjacentBranches(theta);
+  // Cosine easing: 0 at left center, 1 at right center
+  const wRight = 0.5 - 0.5 * Math.cos(t * Math.PI);
+  const wLeft = 1 - wRight;
+
+  if (branchIdx === leftIdx) return wLeft;
+  if (branchIdx === rightIdx) return wRight;
+  return 0;
 }
 
 /**
  * Compute influence values for all 12 branches at a given angle.
+ * With pairwise interpolation, at most 2 values are non-zero.
  * @param {number} theta - current angle in degrees [0, 360)
  * @returns {number[]} array of 12 influence values
  */
 export function allBranchInfluences(theta) {
-  const influences = new Array(12);
-  for (let i = 0; i < 12; i++) {
-    influences[i] = branchInfluence(theta, i);
-  }
-  return influences;
+  const influences = new Float64Array(12);  // initialized to 0
+  const { leftIdx, rightIdx, t } = getAdjacentBranches(theta);
+  const wRight = 0.5 - 0.5 * Math.cos(t * Math.PI);
+  influences[leftIdx] = 1 - wRight;
+  influences[rightIdx] += wRight;  // += handles leftIdx === rightIdx edge case (t=0)
+  return Array.from(influences);
 }
 
 /**
  * Compute the five-element (오행) strength at a given angle.
  *
- * For each branch, its influence at the angle is multiplied by the
- * branch's oheng ratios, then summed across all 12 branches.
+ * Uses pairwise adjacent cosine interpolation between the two
+ * nearest branch profiles. The result is normalized (sums to 1.0),
+ * guaranteeing exact recovery of 지장간 ratios at branch centers.
  *
  * @param {number} theta - angle in degrees [0, 360)
  * @returns {{ 목: number, 화: number, 토: number, 금: number, 수: number }}
  */
 export function ohengStrengthAtAngle(theta) {
+  const { leftIdx, rightIdx, t } = getAdjacentBranches(theta);
+  const wRight = 0.5 - 0.5 * Math.cos(t * Math.PI);
+  const wLeft = 1 - wRight;
+
+  const leftRatios = BRANCH_OHENG_RATIOS[leftIdx];
+  const rightRatios = BRANCH_OHENG_RATIOS[rightIdx];
   const result = { 목: 0, 화: 0, 토: 0, 금: 0, 수: 0 };
-  for (let i = 0; i < 12; i++) {
-    const inf = branchInfluence(theta, i);
-    if (inf === 0) continue;
-    const ratios = BRANCH_OHENG_RATIOS[i];
-    for (const key of OHENG_KEYS) {
-      result[key] += inf * ratios[key];
-    }
+
+  for (const key of OHENG_KEYS) {
+    result[key] = wLeft * leftRatios[key] + wRight * rightRatios[key];
   }
   return result;
 }
