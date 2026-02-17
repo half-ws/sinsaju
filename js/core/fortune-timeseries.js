@@ -27,10 +27,10 @@ import { WolunCalculator } from '../lib/sajuwiki/calculator.js';
  * }
  */
 export function generateFortuneTimeSeries(
-  natalDiscrete, hasTime, daeunData, birthYear, startYear, endYear
+  natalDiscrete, hasTime, daeunData, birthYear, startYear, endYear, natalAngles = null
 ) {
   // 원국 기준선 (운세 없이 순수 원국만)
-  const natal = computeProfile(natalDiscrete, hasTime, {});
+  const natal = computeProfile(natalDiscrete, hasTime, {}, natalAngles);
 
   // 대운 리스트 정리
   const daeunList = Array.isArray(daeunData) ? daeunData : (daeunData?.list || []);
@@ -66,7 +66,7 @@ export function generateFortuneTimeSeries(
     if (activeDaeun) fortunePillars.daeun = activeDaeun.idx;
     fortunePillars.saeun = saeunIdx;
 
-    const profile = computeProfile(natalDiscrete, hasTime, fortunePillars);
+    const profile = computeProfile(natalDiscrete, hasTime, fortunePillars, natalAngles);
 
     // 원국 대비 변화량
     const delta = { oheng: {}, sipsung: {} };
@@ -110,9 +110,9 @@ export function generateFortuneTimeSeries(
  * @returns {Array<{ monthNum, pillar, oheng, sipsung, interactions, delta }>}
  */
 export function generateMonthlyDetail(
-  natalDiscrete, hasTime, daeunIdx, saeunIdx, targetYear
+  natalDiscrete, hasTime, daeunIdx, saeunIdx, targetYear, natalAngles = null
 ) {
-  const natal = computeProfile(natalDiscrete, hasTime, {});
+  const natal = computeProfile(natalDiscrete, hasTime, {}, natalAngles);
   const wolunList = WolunCalculator.calculate(natalDiscrete, targetYear);
   const monthly = [];
 
@@ -120,7 +120,7 @@ export function generateMonthlyDetail(
     const fortunePillars = { saeun: saeunIdx, wolun: wol.idx };
     if (daeunIdx != null) fortunePillars.daeun = daeunIdx;
 
-    const profile = computeProfile(natalDiscrete, hasTime, fortunePillars);
+    const profile = computeProfile(natalDiscrete, hasTime, fortunePillars, natalAngles);
 
     const delta = { oheng: {}, sipsung: {} };
     for (const e of OHENG) {

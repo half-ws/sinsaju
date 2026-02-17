@@ -36,6 +36,7 @@ export class SingleChart {
     this._chartData = null;
     this._fortuneTimeSeriesData = null;
     this._tsMode = 'oheng';
+    this._natalAngles = null;
 
     // 대운/연간 네비게이션 상태
     this._currentDecadeIdx = 0;
@@ -125,6 +126,16 @@ export class SingleChart {
     appState.set('chartDataA', chartData);
     appState.set('correctionInfo', correctionInfo);
 
+    // 연속 각도 추출
+    const cont = chartData.continuous;
+    const natalAngles = cont ? {
+      year: cont.year?.angle,
+      month: cont.month?.angle,
+      day: cont.day?.angle,
+      hour: cont.hour?.angle,
+    } : null;
+    this._natalAngles = natalAngles;
+
     // 1. Pillar display (with self-pillar twelve-stage)
     this.pillarDisplay.render(chartData.discrete, hasTime);
 
@@ -177,7 +188,7 @@ export class SingleChart {
 
     // 6. 오행/십성 프로필
     try {
-      const natalProfile = computeProfile(chartData.discrete, hasTime, {});
+      const natalProfile = computeProfile(chartData.discrete, hasTime, {}, natalAngles);
       this.ohengSipsungPanel.render(natalProfile, chartData.yongsin);
     } catch (e) {
       console.warn('Oheng/Sipsung panel rendering failed:', e);
@@ -187,7 +198,7 @@ export class SingleChart {
     try {
       const tsData = generateFortuneTimeSeries(
         chartData.discrete, hasTime, chartData.daeun,
-        bm.year, bm.year, bm.year + 80
+        bm.year, bm.year, bm.year + 80, natalAngles
       );
       this.fortuneTimeSeriesChart.render(tsData, 'oheng');
       this._fortuneTimeSeriesData = tsData;
@@ -241,7 +252,7 @@ export class SingleChart {
     try {
       const decadeData = generateFortuneTimeSeries(
         chartData.discrete, hasTime, chartData.daeun,
-        bm.year, startYear, endYear
+        bm.year, startYear, endYear, this._natalAngles
       );
       this.decadeChart.render(decadeData, this._tsMode);
     } catch (e) {
@@ -280,7 +291,7 @@ export class SingleChart {
       const natal = this._fortuneTimeSeriesData?.natal;
       const monthlyData = generateMonthlyDetail(
         chartData.discrete, hasTime,
-        activeDaeun?.idx ?? null, saeunIdx, year
+        activeDaeun?.idx ?? null, saeunIdx, year, this._natalAngles
       );
       const monthlyChartData = monthlyToChartData(monthlyData, natal || { oheng: { percent: {} }, sipsung: { grouped: {} } });
       this.yearChart.render(monthlyChartData, this._tsMode);

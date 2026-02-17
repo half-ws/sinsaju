@@ -28,6 +28,7 @@ import {
 } from '../lib/sajuwiki/constants.js';
 
 import { OhengAnalyzer, SajuCalculator } from '../lib/sajuwiki/calculator.js';
+import { ohengStrengthAtAngle } from './trig-engine.js';
 
 // ═══════════════════════════════════════════════════
 // 운세 기둥 가중치
@@ -82,6 +83,20 @@ const TONGGWAN_ABSORB = 0.75;
 const EOKBU_ABSORB = 0.25;
 
 // ═══════════════════════════════════════════════════
+// 연속 각도 → 오행 분포 변환
+// ═══════════════════════════════════════════════════
+
+/**
+ * 연속 각도 → BR_EL 호환 분포 배열로 변환.
+ * ohengStrengthAtAngle() 결과를 [{e, r}, ...] 형태로 정규화.
+ */
+function _angleToDist(angle) {
+  const raw = ohengStrengthAtAngle(angle);
+  const total = OHENG.reduce((s, e) => s + raw[e], 0) || 1;
+  return OHENG.filter(e => raw[e] > 0).map(e => ({ e, r: raw[e] / total }));
+}
+
+// ═══════════════════════════════════════════════════
 // 핵심 API
 // ═══════════════════════════════════════════════════
 
@@ -91,6 +106,7 @@ const EOKBU_ABSORB = 0.25;
  * @param {Object} natalDiscrete - SajuCalculator.calculate() 결과
  * @param {boolean} hasTime - 시간 정보 유무
  * @param {Object} [fortunePillars={}] - { daeun?: idx60, saeun?: idx60, wolun?: idx60 }
+ * @param {Object|null} [natalAngles=null] - { year, month, day, hour } 각 기둥의 연속 각도. null이면 이산 방식 유지.
  * @returns {Object} {
  *   oheng: { raw, percent },
  *   sipsung: { raw, percent, grouped },
@@ -98,7 +114,7 @@ const EOKBU_ABSORB = 0.25;
  *   total: number
  * }
  */
-export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
+export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}, natalAngles = null) {
   const natalPositions = hasTime
     ? ['hour', 'day', 'month', 'year']
     : ['day', 'month', 'year'];
@@ -113,7 +129,10 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
     const si = idx60 % 10;
     const bi = idx60 % 12;
     sd[p] = { si, el: CHEONGAN_OHENG[si], w: STEM_W[p], of: 1, tr: [] };
-    bd[p] = { bi, dist: BR_EL[bi], w: BR_W[p], of: 1, tr: [], yy: BONGI_EUMYANG[bi] };
+    const dist = (natalAngles && natalAngles[p] != null)
+      ? _angleToDist(natalAngles[p])
+      : BR_EL[bi];
+    bd[p] = { bi, dist, w: BR_W[p], of: 1, tr: [], yy: BONGI_EUMYANG[bi] };
   }
 
   const fortunePositions = [];
@@ -123,7 +142,8 @@ export function computeProfile(natalDiscrete, hasTime, fortunePillars = {}) {
     const si = idx60 % 10;
     const bi = idx60 % 12;
     sd[fp] = { si, el: CHEONGAN_OHENG[si], w: FORTUNE_STEM_W[fp], of: 1, tr: [] };
-    bd[fp] = { bi, dist: BR_EL[bi], w: FORTUNE_BR_W[fp], of: 1, tr: [], yy: BONGI_EUMYANG[bi] };
+    const fortuneAngle = bi * 30;  // 지지 중심각
+    bd[fp] = { bi, dist: _angleToDist(fortuneAngle), w: FORTUNE_BR_W[fp], of: 1, tr: [], yy: BONGI_EUMYANG[bi] };
     fortunePositions.push(fp);
   }
 
